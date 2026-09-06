@@ -99,7 +99,7 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 
 **1.** A bootstrap phase on a test-less repo needs the tests pre-flight check downgraded to advisory for that one phase; restore it in the same phase's ending protocol.
 
-**4.** Pinning only direct dependencies is not reproducibility: a pinned client library can be broken by an unpinned transitive one. Verify installs in a fresh venv, and prefer a full freeze/lock for deployables.
+**4.** Pinning only direct dependencies is not reproducibility: a pinned client library can be broken by an unpinned transitive one. Verify installs in a fresh venv, and prefer a full freeze/lock for deployables. (promoted 2026-09-06: L-02)
 
 **6.** When a phase needs a storage or infrastructure seam that a later phase was going to build, build the seam first and record the reorder as a correction — dependency order beats the plan's narrative order, and a fake built on the old seam is throwaway work. *(evidence: Phase 4 pulled task 5.1 (per-call SQLite) forward; C-04)*
 
@@ -107,12 +107,12 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 
 **2.** Flat-layout Python repos (modules at the root) need pythonpath=['.'] in [tool.pytest.ini_options] or test modules cannot import them; and any test that importlib.reload()s a module must catch a base exception class, because reload mints new class objects that no longer match the names imported before the reload. *(evidence: Phase 0: ModuleNotFoundError on import config, then two reload tests failing on class identity)* (obsolete 2026-09-06: superseded by lesson #3: the fix is to never reload a shared module in tests, not to widen the except clause)
 
-**3.** Never importlib.reload() a shared module in a test: it mints new class objects, so exceptions raised later no longer match the classes other test files imported (failures appear in unrelated files that run afterwards). To test import-time behavior, exec config.py into a fresh module object via importlib.util.spec_from_file_location under a different name and leave sys.modules alone. Flat-layout repos still need pythonpath=['.'] in pytest config. *(evidence: Phase 1: test_config_ids failed only because test_config reloaded config first)*
+**3.** Never importlib.reload() a shared module in a test: it mints new class objects, so exceptions raised later no longer match the classes other test files imported (failures appear in unrelated files that run afterwards). To test import-time behavior, exec config.py into a fresh module object via importlib.util.spec_from_file_location under a different name and leave sys.modules alone. Flat-layout repos still need pythonpath=['.'] in pytest config. *(evidence: Phase 1: test_config_ids failed only because test_config reloaded config first)* (promoted 2026-09-06: L-01)
 
 ### Category: Design
 
-**5.** An LLM-as-classifier protocol needs an explicit positive sentinel for the negative class (here: reply exactly OK). Without it, 'no verdict' and 'garbage reply' are indistinguishable, forcing a choice between failing open and flooding humans; with it, the fail-closed path is precise and prompt drift becomes visible noise instead of silent non-enforcement. *(evidence: Phase 3 D8; the original code treated every non-VIOLATION reply as clean and echoed it to the channel)*
+**5.** An LLM-as-classifier protocol needs an explicit positive sentinel for the negative class (here: reply exactly OK). Without it, 'no verdict' and 'garbage reply' are indistinguishable, forcing a choice between failing open and flooding humans; with it, the fail-closed path is precise and prompt drift becomes visible noise instead of silent non-enforcement. *(evidence: Phase 3 D8; the original code treated every non-VIOLATION reply as clean and echoed it to the channel)* (promoted 2026-09-06: L-03)
 
 ### Category: Security
 
-**7.** Rotating a leaked credential is not done until the OLD credential is proven rejected by the live system, not just until a new one is issued. Bake the negative check (expect Permission denied) into the rotation runbook as a required step. *(evidence: Phase 7: owner reported rotation; the reject-the-old-key check is what actually confirms it)*
+**7.** Rotating a leaked credential is not done until the OLD credential is proven rejected by the live system, not just until a new one is issued. Bake the negative check (expect Permission denied) into the rotation runbook as a required step. *(evidence: Phase 7: owner reported rotation; the reject-the-old-key check is what actually confirms it)* (promoted 2026-09-06: L-04)
