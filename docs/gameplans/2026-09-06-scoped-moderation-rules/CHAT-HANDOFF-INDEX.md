@@ -1,7 +1,7 @@
 # Chat Handoff Index — Scoped Moderation Rules
 
 > Last updated: 2026-09-06
-> Status: Phase 6 ready
+> Status: All 7 phases complete
 
 ## How This Works
 
@@ -35,7 +35,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
-| 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
+| 6 | Wire-through and measurement | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-6-HANDOFF.md |
 
 **Status legend**: ⬜ NOT STARTED · 🟢 READY · 🟡 IN PROGRESS · ✅ COMPLETE · ⚠️ BLOCKED · 🔴 FAILED
 
@@ -77,6 +77,12 @@ Moderators can now author scoped rules from Discord. bot.py registers a /rules c
 
 FakeInteraction gained a permissions property so has_permissions predicates run offline; a parametrised test proves each subcommand rejects a Manage-Messages moderator and accepts an Administrator. 16 new tests; suite 212, ruff clean. README, ARCHITECTURE, CHANGELOG, bot-gateway subsystem body updated; bot-gateway 1.1.0.
 
+### Phase 6 — completed 2026-09-06
+
+The classifier now enforces scoped rules end to end. ai_engine.analyze_message resolves the pipeline's ScopeChain through composer.get_resolver() — memoised, invalidated by the guild's rules version — and passes the composed text as the <rules> block; callers with no scope still get the guild text through rules_loader. classify logs one DEBUG line per call with the ruleset key, rules and message sizes, and the API-reported prompt/completion tokens; config.LOG_LEVEL (validated) enables it and bot.main configures root logging with discord.py's own handler disabled to avoid duplicates. The criterion's "token count per component" is delivered as chars plus API totals — recorded as correction C-01 with the reasoning.
+
+Docs truthed (ARCHITECTURE, DEPLOYMENT env note, CHANGELOG, ai-engine subsystem); ai-engine 0.4.0 pinned to rules ^0.4. Suite 217 green, ruff clean. Post-mortem inputs (ruleset cardinality, token distribution) remain blocked on O-01 — the deployment has to run with LOG_LEVEL=DEBUG before either number exists.
+
 ## Accumulated Lessons
 
 _(Numbered sequentially across the whole gameplan. Categorized. Pruned of
@@ -84,6 +90,12 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 
 ### Category: Process
 
+**2.** When a measurement criterion names a unit the system does not natively produce, prefer the unit the system reports for free and record the substitution, rather than adding a dependency whose numbers will not survive the next migration. (promoted 2026-09-06: L-06)
+
 ### Category: Environment
 
-**1.** cz_preflight runs bare `pytest -q`, and on this host a uv-tool pytest at /root/.local/bin shadows /usr/local/bin/pytest with a venv that lacks the project's deps, so preflight fails with ModuleNotFoundError while `python -m pytest` passes. Fix at session start: `uv pip install --python /root/.local/share/uv/tools/pytest/bin/python -r requirements.txt -r requirements-dev.txt`. Do not "fix" it by editing the host profile's test command. *(evidence: Phase 0 preflight, 2026-09-06; `which pytest` → /root/.local/bin/pytest)*
+**1.** cz_preflight runs bare `pytest -q`, and on this host a uv-tool pytest at /root/.local/bin shadows /usr/local/bin/pytest with a venv that lacks the project's deps, so preflight fails with ModuleNotFoundError while `python -m pytest` passes. Fix at session start: `uv pip install --python /root/.local/share/uv/tools/pytest/bin/python -r requirements.txt -r requirements-dev.txt`. Do not "fix" it by editing the host profile's test command. *(evidence: Phase 0 preflight, 2026-09-06; `which pytest` → /root/.local/bin/pytest)* (promoted 2026-09-06: L-05)
+
+### Category: Design
+
+**3.** Capture the deploy target's runtime versions (here sqlite3.sqlite_version — Amazon Linux 2 ships 3.7, RETURNING needs 3.35) in Source-of-Truth Captures before using any version-gated feature. The dev box's 3.45 hid the risk; it was caught on re-read, not by a test. *(evidence: Phase 1, rules._bump_version rewritten to avoid RETURNING)* (promoted 2026-09-06: L-07)

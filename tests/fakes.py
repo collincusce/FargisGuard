@@ -147,9 +147,10 @@ class FakeMessage:
 class FakeCompletions:
     """Stands in for client.chat.completions; records every create() call."""
 
-    def __init__(self, reply: str = "OK", error: Exception | None = None):
+    def __init__(self, reply: str = "OK", error: Exception | None = None, usage=None):
         self.reply = reply
         self.error = error
+        self.usage = usage  # e.g. SimpleNamespace(prompt_tokens=..., completion_tokens=...)
         self.calls: list[dict] = []
 
     async def create(self, **kwargs):
@@ -157,12 +158,12 @@ class FakeCompletions:
         if self.error is not None:
             raise self.error
         message = SimpleNamespace(content=self.reply)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=self.usage)
 
 
 class FakeOpenAI:
-    def __init__(self, reply: str = "OK", error: Exception | None = None):
-        self.completions = FakeCompletions(reply, error)
+    def __init__(self, reply: str = "OK", error: Exception | None = None, usage=None):
+        self.completions = FakeCompletions(reply, error, usage)
         self.chat = SimpleNamespace(completions=self.completions)
 
 

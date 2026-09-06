@@ -13,7 +13,7 @@
 | 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
-| 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
+| 6 | Wire-through and measurement | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-6-HANDOFF.md |
 
 ## Outputs Registry
 
@@ -60,6 +60,20 @@ test_count_after_phase_5: 212 passed (196 + 16 in tests/test_rulecmds.py); ruff 
 rules_commands: /rules group (Administrator default perms + has_permissions check on each, guild_only): category <CategoryChannel> <text>; channel <Text|Forum|Voice> <text>; thread <Text|Forum> <text> (keyed by parent id); clear <category|channel|thread> <GuildChannel>; show <Text|Forum|Voice|Thread> [in_thread]. Handlers in rulecmds.py: set_reply / clear_reply / show_reply / chain_for. Per-scope text capped at 4000 chars; show truncates to fit 2000. FakeInteraction.permissions added so has_permissions predicates run offline.
 ```
 
+### Phase 6 Outputs
+
+```
+test_count_after_phase_6: 217 passed (212 + 5); ruff check clean; the only `ruff format` nit is tests/test_bot_wiring.py, pre-existing and untouched
+measurement_line: ai_engine.classify logs at DEBUG: `classify ruleset=<sha256> rules_chars=N message_chars=N prompt_tokens=N completion_tokens=N` (usage from response.usage; `?` if absent). Enable with LOG_LEVEL=DEBUG (config.LOG_LEVEL, validated; bot.main configures root logging and passes log_handler=None to discord.py). No tokenizer dependency — API-reported totals are the baseline; per-component figures are chars.
+postmortem_inputs: BLOCKED on O-01: distinct-ruleset cardinality per guild and composed-rules token distribution need a running deployment with LOG_LEVEL=DEBUG. Collect from journalctl after deploy: `journalctl -u fargisguard | grep 'classify ruleset='` → count distinct ruleset= values per day (cardinality) and the prompt_tokens distribution. Until then the token-architecture gameplan starts from the structural estimate only (~92% of prompt is fixed prefix on today's 4-line rules).
+```
+
 ## Corrections Log
 
-_(Every divergence from the gameplan, captured in real time, as C-NN entries.)_
+### C-01 — Phase 6
+
+**Phase**: 6
+**What gameplan said**: Each classification logs the composed-rules token count and the message token count.
+**What was actually correct**: Each classification logs the composed-rules and message sizes in characters plus the API-reported prompt_tokens and completion_tokens totals; per-component token counts are not computed locally.
+**Why**: Counting tokens per component needs a tokenizer dependency (tiktoken today, a different one after the Anthropic migration) and the numbers would differ between providers anyway. The API's own usage figures are the honest baseline and cost nothing; chars per component are enough to attribute the split. Adding a tokenizer to measure a provider we are about to leave is waste.
+**Lesson**: When a measurement criterion names a unit the system does not natively produce, prefer the unit the system reports for free and record the substitution, rather than adding a dependency whose numbers will not survive the next migration.

@@ -1,7 +1,7 @@
 # Scoped Moderation Rules Gameplan
 
 > Created: 2026-09-06
-> Status: Executing
+> Status: Complete
 <!-- Optional, advisory-only (D-072) — declare to arm the wind-down advisory:
      "> Budget: N sessions" here, and/or "**Budget**: N sessions" inside a
      "### Phase N" block. Dormant by default; nothing blocks, ever. -->
@@ -223,9 +223,9 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 6.4 | Post-mortem inputs: ruleset cardinality and token distribution, or mark blocked on O-01 | 1h |
 
 **Exit criteria**:
-- [ ] pipeline.handle_message passes the resolved ScopeChain to Deps.analyze as additive optional kwargs; the Recorder helper in tests/test_pipeline.py is the only test change needed for the signature
-- [ ] ai_engine.analyze_message composes through the memoised resolver and the guild-only rules_loader path still works for callers that pass no scope
-- [ ] Each classification logs at debug level: resolved-ruleset key, composed-rules token count, message token count
-- [ ] Subsystem docs for rules, pipeline, ai-engine, and channels are updated and versions bumped; cz_cascade run and resolved with no pending reports
-- [ ] Post-mortem inputs recorded: distinct-ruleset cardinality per guild and composed-rules token distribution, or explicitly marked blocked on O-01
-- [ ] Full suite green with test count recorded in the handoff
+- [x] pipeline.handle_message passes the resolved ScopeChain to Deps.analyze as additive optional kwargs; the Recorder helper in tests/test_pipeline.py is the only test change needed for the signature
+- [x] ai_engine.analyze_message composes through the memoised resolver and the guild-only rules_loader path still works for callers that pass no scope
+- [x] Each classification logs at debug level: resolved-ruleset key, composed-rules token count, message token count
+- [x] Subsystem docs for rules, pipeline, ai-engine, and channels are updated and versions bumped; cz_cascade run and resolved with no pending reports
+- [x] Post-mortem inputs recorded: distinct-ruleset cardinality per guild and composed-rules token distribution, or explicitly marked blocked on O-01
+- [x] Full suite green with test count recorded in the handoff

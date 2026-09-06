@@ -5,6 +5,7 @@ Importing this module never connects; ``main()`` does (D5).
 
 import asyncio
 import functools
+import logging
 from collections.abc import Callable
 
 import discord
@@ -240,8 +241,12 @@ def create_bot(
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=config.LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
     database.init_db()
-    create_bot().run(config.DISCORD_TOKEN)
+    # log_handler=None: discord.py must not add a second handler beside the root one.
+    create_bot().run(config.DISCORD_TOKEN, log_handler=None)
 
 
 if __name__ == "__main__":

@@ -58,6 +58,12 @@ DASHBOARD_HOST = optional_env("DASHBOARD_HOST", "127.0.0.1")
 # Empty means the dashboard is not started at all.
 DASHBOARD_TOKEN = optional_env("DASHBOARD_TOKEN", "")
 
+# Python logging level name; DEBUG adds one line per classification with the
+# ruleset key and token usage (the batching/caching baseline).
+LOG_LEVEL = optional_env("LOG_LEVEL", "INFO").upper()
+if LOG_LEVEL not in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"):
+    raise ConfigError(f"LOG_LEVEL must be a Python logging level name, got {LOG_LEVEL!r}")
+
 # Role IDs (not names) whose holders are never auto-moderated; administrators and
 # anyone with manage_messages are immune regardless (INVARIANT-05).
 IMMUNE_ROLE_IDS = parse_id_list(optional_env("IMMUNE_ROLE_IDS", ""), name="IMMUNE_ROLE_IDS")

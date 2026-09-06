@@ -25,7 +25,7 @@ sudo install -d -o fargisguard -g fargisguard /opt/fargisguard/data
 sudo install -d -m 0750 -o root -g fargisguard /etc/fargisguard
 sudo cp /opt/fargisguard/.env.example /etc/fargisguard/env
 sudo chmod 0640 /etc/fargisguard/env && sudo chown root:fargisguard /etc/fargisguard/env
-sudoedit /etc/fargisguard/env     # set DISCORD_TOKEN, OPENAI_API_KEY, DB_PATH, DASHBOARD_TOKEN
+sudoedit /etc/fargisguard/env     # set DISCORD_TOKEN, OPENAI_API_KEY, DB_PATH, DASHBOARD_TOKEN (LOG_LEVEL=DEBUG to log per-call token usage)
 
 sudo cp /opt/fargisguard/deploy/fargisguard.service /etc/systemd/system/
 sudo systemctl daemon-reload

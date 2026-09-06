@@ -6,10 +6,15 @@ evaluate them, not obey them. The client is built lazily and can be injected,
 so nothing here touches the network at import or in tests (INVARIANT-04).
 """
 
+import logging
+
 from openai import AsyncOpenAI
 
 import config
+from composer import get_resolver
 from rules import get_rules
+
+log = logging.getLogger(__name__)
 
 MODEL = "gpt-4o-mini"
 REQUEST_TIMEOUT = 15.0
@@ -85,8 +90,15 @@ def get_client() -> AsyncOpenAI:
     return _client
 
 
-async def classify(rules: str, content: str, *, client=None, model: str = MODEL) -> str:
-    """Return the model's raw reply (stripped). Callers parse it; this never does."""
+async def classify(
+    rules: str, content: str, *, client=None, model: str = MODEL, ruleset_key: str = "guild-only"
+) -> str:
+    """Return the model's raw reply (stripped). Callers parse it; this never does.
+
+    One debug line per call records the ruleset key, the size of each prompt
+    part, and the token usage the API reports — the measurements the batching
+    and caching work starts from. Enable with ``LOG_LEVEL=DEBUG``.
+    """
     client = client or get_client()
     response = await client.chat.completions.create(
         model=model,
@@ -94,15 +106,35 @@ async def classify(rules: str, content: str, *, client=None, model: str = MODEL)
         temperature=0,
         max_tokens=60,
     )
+    usage = getattr(response, "usage", None)
+    log.debug(
+        "classify ruleset=%s rules_chars=%d message_chars=%d prompt_tokens=%s completion_tokens=%s",
+        ruleset_key,
+        len(rules),
+        len(content[:MAX_CONTENT_CHARS]),
+        getattr(usage, "prompt_tokens", "?"),
+        getattr(usage, "completion_tokens", "?"),
+    )
     return (response.choices[0].message.content or "").strip()
 
 
 async def analyze_message(
-    content: str, guild_id: int, *, scope=None, client=None, rules_loader=get_rules
+    content: str,
+    guild_id: int,
+    *,
+    scope=None,
+    client=None,
+    rules_loader=get_rules,
+    resolver=None,
 ) -> str:
-    """Classify ``content`` against ``guild_id``'s rules.
+    """Classify ``content`` against the rules that apply where it was posted.
 
-    ``scope`` (a ``channels.ScopeChain``) is accepted from the pipeline now and
-    consumed once the composer lands; until then the guild text is used.
+    With a ``scope`` (a ``channels.ScopeChain``, what the pipeline passes) the
+    rules are the composed, memoised scoped text and the ruleset key travels
+    into the debug log. Without one — callers that predate scopes — the guild
+    text from ``rules_loader`` is used, as before.
     """
-    return await classify(rules_loader(guild_id), content, client=client)
+    if scope is None:
+        return await classify(rules_loader(guild_id), content, client=client)
+    resolved = (resolver or get_resolver()).resolve(scope)
+    return await classify(resolved.text, content, client=client, ruleset_key=resolved.key)
