@@ -1,7 +1,7 @@
 # Chat Handoff Index — Scoped Moderation Rules
 
 > Last updated: 2026-09-06
-> Status: Phase 0 ready
+> Status: Phase 1 ready
 
 ## How This Works
 
@@ -29,7 +29,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 
 | Phase | Name | Status | Started | Completed | Handoff |
 |-------|------|--------|---------|-----------|---------|
-| 0 | Bootstrap | ⬜ READY | — | — | handoffs/PHASE-0-HANDOFF.md |
+| 0 | Bootstrap | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Scoped rules schema | ⬜ NOT STARTED | — | — | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Scope resolver | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Safety floor and NSFW supersession | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
@@ -41,7 +41,11 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 
 ## Per-Phase Completion Summaries
 
-_(None yet.)_
+### Phase 0 — completed 2026-09-06
+
+Landed the plan (D-007..D-010 project ADRs, D1/D2 gameplan decisions, O-01..O-04), captured the baseline (148 tests, Python 3.11.15, discord.py 2.3.2, openai 2.54.0), and added the pre-restart SQLite backup line to docs/DEPLOYMENT.md with the reasoning (no transactional DDL rollback once migrations create or copy tables). Fixed the session environment so cz_preflight's bare `pytest` resolves the project's deps (lesson #1).
+
+O-01 (the live deployment reporting 0 OpenAI requests over 30 days) is deferred, not resolved: the operator has not yet supplied journalctl output. Phase 6's token-distribution criterion is blocked on it; nothing in Phases 1–5 depends on it.
 
 ## Accumulated Lessons
 
@@ -50,4 +54,6 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 
 ### Category: Process
 
-_(none yet)_
+### Category: Environment
+
+**1.** cz_preflight runs bare `pytest -q`, and on this host a uv-tool pytest at /root/.local/bin shadows /usr/local/bin/pytest with a venv that lacks the project's deps, so preflight fails with ModuleNotFoundError while `python -m pytest` passes. Fix at session start: `uv pip install --python /root/.local/share/uv/tools/pytest/bin/python -r requirements.txt -r requirements-dev.txt`. Do not "fix" it by editing the host profile's test command. *(evidence: Phase 0 preflight, 2026-09-06; `which pytest` → /root/.local/bin/pytest)*

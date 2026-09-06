@@ -42,11 +42,16 @@ mysterious API error later.
 ```bash
 cd /opt/fargisguard && sudo -u fargisguard git pull
 sudo -u fargisguard venv/bin/pip install -r requirements.txt
+sudo -u fargisguard cp "$DB_PATH" "$DB_PATH.bak-$(date +%F)"   # DB_PATH as set in /etc/fargisguard/env
 sudo systemctl restart fargisguard
 ```
 
 Schema changes are applied automatically on first connection
-(`database.MIGRATIONS`); the SQLite file is never dropped.
+(`database.MIGRATIONS`); the SQLite file is never dropped. Take the backup
+anyway: `ADD COLUMN` migrations are safe to re-run, but a release that creates
+or copies tables (the scoped-rules release and later) has no transactional
+rollback in SQLite, and a backup file plus `git checkout <previous-tag>` is the
+whole recovery plan.
 
 ## Dashboard access
 

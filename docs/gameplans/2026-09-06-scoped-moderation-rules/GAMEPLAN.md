@@ -1,7 +1,7 @@
 # Scoped Moderation Rules Gameplan
 
 > Created: 2026-09-06
-> Status: Planning
+> Status: Executing
 <!-- Optional, advisory-only (D-072) — declare to arm the wind-down advisory:
      "> Budget: N sessions" here, and/or "**Budget**: N sessions" inside a
      "### Phase N" block. Dormant by default; nothing blocks, ever. -->
@@ -97,10 +97,10 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 0.4 | Write the Phase 1 handoff | 0.5h |
 
 **Exit criteria**:
-- [ ] Baseline recorded in the phase handoff: 148 tests passing on Python 3.11.15 with discord.py 2.3.2, openai 2.54.0
-- [ ] docs/DEPLOYMENT.md contains a pre-restart `cp` backup line for moderation.db in the deploy sequence
-- [ ] O-01 has a recorded diagnosis (journalctl output summarised) or is explicitly deferred with the token-baseline criterion of Phase 6 marked blocked
-- [ ] A written scope-model note in the gameplan states the four scopes, the binary channel/thread rule, and the content-hash key, so later phases do not re-derive it
+- [x] Baseline recorded in the phase handoff: 148 tests passing on Python 3.11.15 with discord.py 2.3.2, openai 2.54.0
+- [x] docs/DEPLOYMENT.md contains a pre-restart `cp` backup line for moderation.db in the deploy sequence
+- [x] O-01 has a recorded diagnosis (journalctl output summarised) or is explicitly deferred with the token-baseline criterion of Phase 6 marked blocked
+- [x] A written scope-model note in the gameplan states the four scopes, the binary channel/thread rule, and the content-hash key, so later phases do not re-derive it
 - [ ] Working tree clean; the plan commit is on claude/moderation-bot-optimization-qpmfn2
 
 ### Phase 1: Scoped rules schema
