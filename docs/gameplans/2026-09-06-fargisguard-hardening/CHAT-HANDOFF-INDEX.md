@@ -1,7 +1,7 @@
 # Chat Handoff Index — FargisGuard Hardening
 
 > Last updated: 2026-09-06
-> Status: Phase 4 ready
+> Status: Phase 5 ready
 
 ## How This Works
 
@@ -33,7 +33,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 1 | Verdict parsing and punishment correctness | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Gateway access control and channel checks | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
-| 4 | Human-in-the-loop for high severity and warning escalation | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
+| 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 | 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
@@ -66,6 +66,12 @@ ai_engine now builds an AsyncOpenAI client lazily (15s timeout) and awaits it, w
 
 What I did not check: whether gpt-4o-mini reliably answers the bare OK sentinel in production (if not, mod-log gets noisy — visible, not silent); any live OpenAI call at all (openai 2.x was verified only by constructing AsyncOpenAI and by the chat.completions call signature the fake records); token cost per message; the behavior of temperature=0 and max_tokens=60 on the real model.
 
+### Phase 4 — completed 2026-09-06
+
+Kick and ban are no longer executed on model output (INVARIANT-02, D2): punish() computes the effective severity from the member's warning history (escalation.py, pure and tabled), applies warn/timeout immediately, and for kick/ban places a 60-minute hold, records a pending_actions row, and returns pending:<id>:<action>; the mod-log notice names the id and the /modaction commands. /modaction (ban_members) approves — executing the ban via guild.ban(discord.Object) so it works after the member leaves, or the kick — or denies, lifting the hold; both mark the row with the moderator and timestamp, and double-resolution or a wrong guild is refused. To support this, database.py was rewritten a phase early (C-04): per-call connections, DB_PATH, lazy schema init, and a column migration for pre-existing appeals tables; every test runs against its own temp file and the suite provably creates no moderation.db. rules.py and appeals.py migrated to connect(). 127 tests, ruff clean.
+
+What I did not check: dashboard.py, which still imports the removed cursor and cannot import until Phase 5 migrates it (no test imports it yet); Discord's actual behavior for member.timeout(None) as 'lift'; whether a 60-minute hold is the right length for a human to respond (config knob later if needed); the migration against a real production moderation.db (only against a synthetic old-shape file).
+
 ## Accumulated Lessons
 
 _(Numbered sequentially across the whole gameplan. Categorized. Pruned of
@@ -76,6 +82,8 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 **1.** A bootstrap phase on a test-less repo needs the tests pre-flight check downgraded to advisory for that one phase; restore it in the same phase's ending protocol.
 
 **4.** Pinning only direct dependencies is not reproducibility: a pinned client library can be broken by an unpinned transitive one. Verify installs in a fresh venv, and prefer a full freeze/lock for deployables.
+
+**6.** When a phase needs a storage or infrastructure seam that a later phase was going to build, build the seam first and record the reorder as a correction — dependency order beats the plan's narrative order, and a fake built on the old seam is throwaway work. *(evidence: Phase 4 pulled task 5.1 (per-call SQLite) forward; C-04)*
 
 ### Category: Testing
 

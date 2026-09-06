@@ -221,10 +221,10 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 4.5 | `tests/test_escalation.py`, `tests/test_pending.py` | M |
 
 **Exit criteria**:
-- [ ] a severity-4 verdict results in no kick/ban call, a pending_actions row, a timeout hold, and a mod-log post naming the pending id (test)
-- [ ] /modaction approve executes the stored action and marks the row; deny lifts the timeout and marks the row (tests with fakes)
-- [ ] escalation.effective_severity is pure and tested: prior warnings raise severity per the documented ladder, capped at 4
-- [ ] /modaction requires ban_members via app_commands checks and default_permissions (test)
+- [x] a severity-4 verdict results in no kick/ban call, a pending_actions row, a timeout hold, and a mod-log post naming the pending id (test)
+- [x] /modaction approve executes the stored action and marks the row; deny lifts the timeout and marks the row (tests with fakes)
+- [x] escalation.effective_severity is pure and tested: prior warnings raise severity per the documented ladder, capped at 4
+- [x] /modaction requires ban_members via app_commands checks and default_permissions (test)
 
 ### Phase 5: Dashboard and database safety
 
@@ -240,7 +240,7 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 5.5 | `tests/test_database.py` (two-thread interleave), `tests/test_dashboard.py` (401/200, host default, token-unset no-start) | M |
 
 **Exit criteria**:
-- [ ] database exposes a connect() context manager and no module-level connection or cursor; DB_PATH env var controls the file
+- [x] database exposes a connect() context manager and no module-level connection or cursor; DB_PATH env var controls the file
 - [ ] rules, appeals, moderation, and dashboard all use connect(); a two-thread test performs interleaved reads without error
 - [ ] dashboard routes return 401 without a valid bearer token and JSON objects (not tuples) with it (TestClient tests)
 - [ ] DASHBOARD_HOST defaults to 127.0.0.1; with DASHBOARD_TOKEN unset the dashboard is not started (test on the start helper)

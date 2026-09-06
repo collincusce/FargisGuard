@@ -1,10 +1,11 @@
 ---
 id: subsys.moderation
 type: subsystem
-version: 0.2.0
+version: 0.3.0
 status: active
 depends_on:
-  - subsys.database@^0.1
+  - subsys.database@^0.2
+  - subsys.escalation@^0.1
 last_verified: 2026-09-06
 external_deps:
   - ext.discord-api

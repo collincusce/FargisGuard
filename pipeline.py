@@ -42,8 +42,22 @@ def _where(message: discord.Message) -> str:
     return f"User: {message.author}\nChannel: {message.channel.mention}"
 
 
+def describe_action(action: str) -> str:
+    """Pure: turn punish()'s return value into the mod-log wording."""
+    if action.startswith("pending:"):
+        _, pending_id, proposed = action.split(":", 2)
+        return (
+            f"held for review — proposed **{proposed}**. "
+            f"Run `/modaction {pending_id} approve` or `/modaction {pending_id} deny`."
+        )
+    return action
+
+
 def violation_notice(message: discord.Message, action: str, reason: str) -> str:
-    return f"🚨 **Violation Detected**\n{_where(message)}\nAction: {action}\nReason: {reason}"
+    return (
+        f"🚨 **Violation Detected**\n{_where(message)}\n"
+        f"Action: {describe_action(action)}\nReason: {reason}"
+    )
 
 
 def error_notice(message: discord.Message, stage: str, exc: BaseException) -> str:

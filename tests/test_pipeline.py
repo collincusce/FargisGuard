@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from pipeline import Deps, handle_message, should_analyze
+from pipeline import Deps, describe_action, handle_message, should_analyze
 from tests.fakes import FakeChannel, FakeGuild, FakeMember, FakeMessage
 
 
@@ -150,3 +150,15 @@ async def test_logger_failure_does_not_escape(rec):
 
     deps = Deps(analyze=rec.deps().analyze, punish=rec.deps().punish, log=bad_log)
     assert await handle_message(FakeMessage(content="x"), deps) == "error"
+
+
+async def test_pending_action_notice_names_the_id_and_the_command(rec):
+    rec.reply = "VIOLATION|4|hate"
+    rec.action = "pending:12:ban"
+    msg = FakeMessage(content="...")
+    assert await handle_message(msg, rec.deps()) == "pending:12:ban"
+    assert "/modaction 12 approve" in rec.logged[0] and "**ban**" in rec.logged[0]
+
+
+def test_describe_action_passthrough():
+    assert describe_action("timeout") == "timeout"

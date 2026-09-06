@@ -11,7 +11,7 @@
 | 1 | Verdict parsing and punishment correctness | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Gateway access control and channel checks | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
-| 4 | Human-in-the-loop for high severity and warning escalation | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
+| 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 | 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
@@ -56,6 +56,16 @@ pipeline_outcomes: handle_message returns ignored|exempt|skipped|clean|unparseab
 requirements: openai==2.54.0 (was 1.10.0); httpx pin removed; verified AsyncOpenAI constructs on httpx 0.28.1
 ```
 
+### Phase 4 Outputs
+
+```
+tests: 127 passed (adds test_escalation, test_database, test_pending; test_moderation updated for holds)
+database_api: database.connect(path=None) contextmanager (sqlite3.Row, commit/rollback, lazy init_db per path); init_db(path); db_path() from DB_PATH (default moderation.db); now_iso(); add_warning/get_warnings/forgive; add_pending/get_pending/list_pending/resolve_pending; MIGRATIONS add appeals.created_at/resolved_by/resolved_at to old files; no module-level conn/cursor
+moderation_api: punish -> warn|timeout|pending:<id>:<kick|ban>|immune|none (severity raised by escalation.effective_severity from prior warnings; kick/ban never executed here, member held with a 60-minute timeout); async resolve_pending_action(guild, pending_id, approve|deny, *, moderator_id) -> message; HOLD_MINUTES=60
+escalation_api: escalation.effective_severity(model_severity, prior_warnings): +1 at >=3 priors, +2 at >=6, capped at 4, never lower
+commands: /modaction pending_id decision(approve|deny) — app_commands.checks.has_permissions(ban_members) + default_permissions(ban_members); mod-log notice names the id and both commands
+```
+
 ## Corrections Log
 
 ### C-01 — Phase 0
@@ -80,3 +90,10 @@ requirements: openai==2.54.0 (was 1.10.0); httpx pin removed; verified AsyncOpen
 **What was actually correct**: Phase 2 also pins httpx<0.28 in requirements.txt: without it `import bot` (and therefore every wiring test) fails on a clean install because openai 1.10.0 is incompatible with httpx 0.28+.
 **Why**: Discovered the moment bot.py became importable in tests — the old module-level bot.run() had hidden that the pinned requirements no longer produce a bootable bot. Phase 3 replaces the openai pin and drops the httpx pin (H-13).
 **Lesson**: Pinning only direct dependencies is not reproducibility: a pinned client library can be broken by an unpinned transitive one. Verify installs in a fresh venv, and prefer a full freeze/lock for deployables.
+
+### C-04 — Phase 4
+
+**Phase**: 4
+**What gameplan said**: Per-call SQLite connections and DB_PATH (task 5.1) and the rules/appeals migration (5.2) belong to Phase 5.
+**What was actually correct**: Done in Phase 4: pending_actions needed a table and its tests needed an isolated database file, and building that on the module-level cursor only to rewrite it a phase later was waste. dashboard.py is NOT migrated yet — it still imports the removed cursor and is broken until Phase 5, which keeps the dashboard half of 5.2 plus 5.3-5.5.
+**Why**: Dependency order beat narrative order: the storage seam is a prerequisite of the human-gate work, not a sibling of it. Phase 5's first exit criterion is checked off here because it is met.

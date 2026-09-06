@@ -1,7 +1,7 @@
 ---
 id: subsys.pipeline
 type: subsystem
-version: 0.2.0
+version: 0.2.1
 status: active
 depends_on:
   - subsys.verdict@^0.1

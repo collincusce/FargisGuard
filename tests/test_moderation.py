@@ -9,7 +9,7 @@ from tests.fakes import FakeMember, FakePermissions, FakeRole
 
 @pytest.fixture
 def warnings(monkeypatch):
-    """Record add_warning calls instead of touching SQLite."""
+    """Record add_warning calls (the DB is a per-test temp file regardless)."""
     calls: list[tuple[int, int]] = []
     monkeypatch.setattr(moderation, "add_warning", lambda uid, gid: calls.append((uid, gid)))
     return calls
@@ -38,17 +38,18 @@ async def test_severity_2_times_out_with_a_real_datetime(warnings):
     assert reason == "flood"
 
 
-async def test_severity_3_kicks(warnings):
+async def test_severity_3_is_held_for_review_not_kicked(warnings):
     m = FakeMember()
-    assert await punish(m, 3, "harassment") == "kick"
-    assert m.kicks == ["harassment"]
-    assert m.bans == []
+    result = await punish(m, 3, "harassment")
+    assert result.startswith("pending:") and result.endswith(":kick")
+    assert m.kicks == [] and m.bans == []
 
 
-async def test_severity_4_bans(warnings):
+async def test_severity_4_is_held_for_review_not_banned(warnings):
     m = FakeMember()
-    assert await punish(m, 4, "hate") == "ban"
-    assert m.bans == ["hate"]
+    result = await punish(m, 4, "hate")
+    assert result.startswith("pending:") and result.endswith(":ban")
+    assert m.bans == [] and len(m.timeouts) == 1
 
 
 @pytest.mark.parametrize("severity", [0, 5, 99, -1])
@@ -86,4 +87,4 @@ def test_role_named_moderator_is_not_immune_by_name():
 async def test_immune_member_is_never_punished(warnings):
     m = FakeMember(guild_permissions=FakePermissions(administrator=True))
     assert await punish(m, 4, "x") == "immune"
-    assert m.bans == [] and warnings == []
+    assert m.bans == [] and m.timeouts == [] and warnings == []

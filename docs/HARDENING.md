@@ -29,13 +29,13 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-03 — Model verdict is sole authority for kick/ban and is prompt-injectable
 
 - **Severity**: high
-- **Status**: partial (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: ai_engine.py, bot.py on_message, moderation.py
 - **Invariant violated**: INVARIANT-02
 - **Impact**: Combined with the /setrules hole, any member can set rules to 'always answer VIOLATION|4|x' and every subsequent message bans its author. Independently, message content can steer the model to not flag violations.
 - **Root cause**: Untrusted content (rules and message) is placed in the prompt and the raw reply is parsed as a command channel with no validation and no human gate.
 - **Recommended fix**: Parse into a validated Verdict; require human approval for severity>=3; put rules in a delimited user turn; add a keyword/OpenAI-moderation floor.
-- **Resolution**: Phase 3: prompt half done — static system prompt, rules as delimited user-turn data, closing tags neutralized. Remaining: the human gate for severity>=3 (Phase 4).
+- **Resolution**: Phase 4: the human gate is in. Parse half (Phase 1), prompt half (Phase 3), and now severity>=3 becomes a pending action approved via /modaction; test_no_kick_or_ban_call_in_punish_source guards the regression.
 ### H-04 — Dashboard binds 0.0.0.0 with no authentication
 
 - **Severity**: high
@@ -76,12 +76,12 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-08 — Shared SQLite cursor across the bot loop and the dashboard thread
 
 - **Severity**: medium
-- **Status**: open (2026-09-06)
+- **Status**: partial (2026-09-06)
 - **Affected**: database.py, dashboard.py, rules.py, appeals.py
 - **Impact**: Interleaved execute/fetchall on one cursor from two threads can return another query's rows or raise.
 - **Root cause**: Module-level connection and cursor with check_same_thread=False.
 - **Recommended fix**: Open a connection per call via a context manager; no module-level cursor.
-
+- **Resolution**: Phase 4: database.py has no module-level connection or cursor; every helper opens a per-call connection; rules/appeals migrated. dashboard.py still imports the old cursor and is migrated in Phase 5.
 ### H-09 — Mentioning the bot returns raw model output — a free GPT proxy
 
 - **Severity**: medium
@@ -113,12 +113,12 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-12 — README claims features the code does not implement
 
 - **Severity**: low
-- **Status**: open (2026-09-06)
+- **Status**: partial (2026-09-06)
 - **Affected**: README.md, database.py, appeals.py
 - **Impact**: Warning escalation (count is written, never read), appeals workflow (write-only table, forgive() never called), and human oversight for high-risk actions do not exist; contributors and operators are misled.
 - **Root cause**: Documentation written ahead of implementation.
 - **Recommended fix**: Implement escalation and the appeal resolution path, then truth-up the README.
-
+- **Resolution**: Phase 4: warning escalation exists (escalation.effective_severity) and human oversight for high-risk actions exists (/modaction). The appeals workflow (Phase 6) and README truth-up (Phase 7) remain.
 ### H-13 — Pinned openai 1.10.0 crashes at import against current httpx (unpinned transitive dependency)
 
 - **Severity**: high

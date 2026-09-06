@@ -51,6 +51,14 @@ class FakeChannel:
 class FakeGuild:
     id: int = 1001
     text_channels: list[FakeChannel] = field(default_factory=list)
+    members: dict[int, object] = field(default_factory=dict)
+    bans: list[tuple[int, str | None]] = field(default_factory=list)
+
+    def get_member(self, user_id: int):
+        return self.members.get(user_id)
+
+    async def ban(self, user, *, reason: str | None = None) -> None:
+        self.bans.append((getattr(user, "id", user), reason))
 
 
 @dataclass

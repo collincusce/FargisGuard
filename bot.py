@@ -8,9 +8,10 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
+import database
 from ai_engine import analyze_message
 from appeals import submit_appeal
-from moderation import punish
+from moderation import punish, resolve_pending_action
 from pipeline import Deps, handle_message
 from rules import set_rules
 
@@ -60,6 +61,22 @@ def register_commands(bot: commands.Bot) -> None:
         set_rules(interaction.guild_id, rules)
         await interaction.response.send_message("📜 Rules updated.", ephemeral=True)
 
+    @bot.tree.command(name="modaction", description="Approve or deny a pending kick/ban")
+    @app_commands.checks.has_permissions(ban_members=True)
+    @app_commands.default_permissions(ban_members=True)
+    @app_commands.describe(pending_id="The #id from the mod-log notice", decision="approve or deny")
+    @app_commands.choices(
+        decision=[
+            app_commands.Choice(name="approve", value="approve"),
+            app_commands.Choice(name="deny", value="deny"),
+        ]
+    )
+    async def modaction(interaction: discord.Interaction, pending_id: int, decision: str) -> None:
+        result = await resolve_pending_action(
+            interaction.guild, pending_id, decision, moderator_id=interaction.user.id
+        )
+        await interaction.response.send_message(result, ephemeral=True)
+
     @bot.tree.error
     async def on_command_error(
         interaction: discord.Interaction, error: app_commands.AppCommandError
@@ -90,6 +107,7 @@ def create_bot(
 
 
 def main() -> None:
+    database.init_db()
     create_bot().run(config.DISCORD_TOKEN)
 
 
