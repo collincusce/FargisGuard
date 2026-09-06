@@ -14,7 +14,7 @@
 | 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-6-HANDOFF.md |
-| 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
+| 7 | Docs truth-up and deploy hygiene | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-7-HANDOFF.md |
 
 ## Outputs Registry
 
@@ -82,6 +82,14 @@ requirements: fastapi 0.110.0 -> 0.141.1 (starlette 1.x) — the 0.110 TestClien
 tests: 148 passed (adds test_appeals, driving the real command callbacks with FakeInteraction)
 appeals_api: appeals.submit_appeal(user_id, guild_id, reason) -> id | None (None when one is pending); appeals.format_pending_appeals(guild_id); appeals.resolve_appeal_action(guild_id, appeal_id, approve|deny, *, moderator_id) -> message (approve calls database.forgive); database.has_pending_appeal/get_appeal/list_pending_appeals/resolve_appeal
 commands: /appeal reason (everyone; ephemeral; posts a mod-log notice naming the id and both resolve commands); /appeals (manage_guild); /appeal_resolve appeal_id approve|deny (manage_guild). Full tree: appeal, appeal_resolve, appeals, modaction, setrules
+```
+
+### Phase 7 Outputs
+
+```
+docs: README.md rewritten (moderation flow, command table with permissions, env-var table matching .env.example, dashboard usage, dev, deploy pointer); docs/DEPLOYMENT.md (systemd layout, install/upgrade, dashboard tunnel, key-rotation+verification runbook, portal checklist); deploy/fargisguard.service; CHANGELOG.md 0.2.0; ARCHITECTURE/SECURITY/TESTING refreshed to final state
+gitignore: Secrets/security block added: *.pem *.key *.p12 *.pfx *.jks *.keystore id_rsa id_ed25519 id_ecdsa *_rsa *_ed25519 *.crt credentials credentials.json service-account*.json secrets.* *.secret .aws/ .ssh/ .env .env.* (!.env.example). Verified no tracked file matches and .env.example stays tracked.
+fresh_venv_verification: python -m venv from requirements-dev.txt on a clean venv: 148 passed, ruff clean, import bot ok; pins discord.py 2.3.2, openai 2.54.0, fastapi 0.141.1, starlette 1.6.0, uvicorn 0.29.0, httpx 0.28.1
 ```
 
 ## Corrections Log

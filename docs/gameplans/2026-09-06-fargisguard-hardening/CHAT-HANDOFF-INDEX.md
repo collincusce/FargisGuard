@@ -1,7 +1,7 @@
 # Chat Handoff Index — FargisGuard Hardening
 
 > Last updated: 2026-09-06
-> Status: Phase 7 ready
+> Status: All 8 phases complete
 
 ## How This Works
 
@@ -36,7 +36,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-6-HANDOFF.md |
-| 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
+| 7 | Docs truth-up and deploy hygiene | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-7-HANDOFF.md |
 
 **Status legend**: ⬜ NOT STARTED · 🟢 READY · 🟡 IN PROGRESS · ✅ COMPLETE · ⚠️ BLOCKED · 🔴 FAILED
 
@@ -84,6 +84,12 @@ Appeals are now a workflow instead of a write-only table: submit_appeal refuses 
 
 What I did not check: whether a member should be able to appeal a *pending* kick/ban specifically (appeals clear warnings; they do not touch pending_actions — a moderator uses /modaction deny for that); rate limiting on /appeal beyond the one-pending rule; Discord's ephemeral-response semantics on a real interaction.
 
+### Phase 7 — completed 2026-09-06
+
+The README now describes only behavior that exists: the moderation flow, the five slash commands with their permission gates, an env-var table that matches .env.example exactly, dashboard usage, and dev/deploy pointers. docs/DEPLOYMENT.md gives the EC2+systemd layout, an EnvironmentFile with 0640 perms, install/upgrade steps, a loopback dashboard tunnel, the Discord portal checklist, and the SSH key-rotation runbook (rotate → verify new → remove old → verify old is REJECTED → delete → scrub history). deploy/fargisguard.service ships a hardened unit. CHANGELOG 0.2.0 maps every H-finding to its fix. ARCHITECTURE/SECURITY/TESTING were refreshed to the shipped state. Per the owner's rotation report and the user's request, .gitignore was broadened to the whole secret/security class and verified against the tracked set. Final fresh-venv run: 148 passed, ruff clean.
+
+What I did not check: the live EC2 host — I cannot reach it from this sandbox (no host address, HTTPS-only egress through the proxy), so the owner's rotation is documented and the exact old-key-rejection command is in the runbook, but it is NOT verified from here; whether nginx/TLS is actually in front of the dashboard in production; that systemd ProtectSystem=strict + ReadWritePaths matches the real data dir the owner chooses.
+
 ## Accumulated Lessons
 
 _(Numbered sequentially across the whole gameplan. Categorized. Pruned of
@@ -106,3 +112,7 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 ### Category: Design
 
 **5.** An LLM-as-classifier protocol needs an explicit positive sentinel for the negative class (here: reply exactly OK). Without it, 'no verdict' and 'garbage reply' are indistinguishable, forcing a choice between failing open and flooding humans; with it, the fail-closed path is precise and prompt drift becomes visible noise instead of silent non-enforcement. *(evidence: Phase 3 D8; the original code treated every non-VIOLATION reply as clean and echoed it to the channel)*
+
+### Category: Security
+
+**7.** Rotating a leaked credential is not done until the OLD credential is proven rejected by the live system, not just until a new one is issued. Bake the negative check (expect Permission denied) into the rotation runbook as a required step. *(evidence: Phase 7: owner reported rotation; the reject-the-old-key check is what actually confirms it)*

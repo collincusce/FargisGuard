@@ -1,7 +1,7 @@
 # FargisGuard Hardening Gameplan
 
 > Created: 2026-09-06
-> Status: Executing
+> Status: Complete
 <!-- Optional, advisory-only (D-072) — declare to arm the wind-down advisory:
      "> Budget: N sessions" here, and/or "**Budget**: N sessions" inside a
      "### Phase N" block. Dormant by default; nothing blocks, ever. -->
@@ -57,7 +57,14 @@ version and installed packages were not observed).
 
 ## Amendments
 
-_(None yet. Append A-NNN entries here once Phase 0 starts.)_
+### A-001 — Broaden .gitignore to all secret/security material and add a live key-rejection check to the runbook
+
+- **Date**: 2026-09-06
+- **Affected sections in GAMEPLAN.md**: Phase 7
+- **Affected phases**: 7
+- **Triggered by**: Owner reports the EC2 key was rotated; user asks to (a) verify the old key no longer logs in and (b) gitignore pem and other security-sensitive files broadly.
+- **What changed**: .gitignore now covers *.pem/*.key/*.p12/*.pfx/*.jks/*.keystore, id_rsa/id_ed25519/id_ecdsa/*_rsa/*_ed25519, *.crt, credentials(.json), service-account*.json, secrets.*/*.secret, .aws/, .ssh/, and .env/.env.* (keeping .env.example). The key-rotation runbook already carries the reject-the-old-key verification (DEPLOYMENT.md step 4).
+- **Why**: Structural prevention of the H-01 class, and the owner's rotation must be verified by proving the old key is refused, not assumed.
 
 ## Decisions
 
@@ -126,6 +133,8 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 **O-03.** _(phase 2)_ Enable the Message Content and Server Members privileged intents for the bot in the Discord developer portal; without them the narrowed intents in Phase 2 will fail to connect. Deploy-time, owner action.
 
 **O-04.** _(phase 7)_ Verify on the live EC2 host after deploy: systemd unit restarts cleanly, slash commands appear after tree.sync, dashboard answers only on loopback with the bearer token. Nothing in this gameplan can be verified against live Discord/OpenAI from the sandbox (INVARIANT-04).
+
+**O-05.** _(phase 7)_ Verify the OLD EC2 key is REJECTED after the owner's rotation: `ssh -i FargisGuard.pem -o BatchMode=yes -o IdentitiesOnly=yes <user>@<host> echo should-fail` must return `Permission denied (publickey)`. Could NOT be run from the build sandbox (no host address; HTTPS-only egress). Owner/user action on a machine with SSH reach to the instance. (H-01)
 
 ## Phase Breakdown
 
@@ -277,7 +286,7 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 7.4 | Final `pytest -q` + `ruff check .` in a fresh venv; record counts | S |
 
 **Exit criteria**:
-- [ ] README features section lists only behavior that exists in code; every .env.example variable is documented
-- [ ] docs/DEPLOYMENT.md contains the systemd unit, EnvironmentFile usage, and the EC2 key-rotation runbook
-- [ ] CHANGELOG.md exists with an entry for this gameplan
-- [ ] pytest -q and ruff check . are green on the final tree
+- [x] README features section lists only behavior that exists in code; every .env.example variable is documented
+- [x] docs/DEPLOYMENT.md contains the systemd unit, EnvironmentFile usage, and the EC2 key-rotation runbook
+- [x] CHANGELOG.md exists with an entry for this gameplan
+- [x] pytest -q and ruff check . are green on the final tree

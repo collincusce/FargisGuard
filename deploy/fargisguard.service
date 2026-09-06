@@ -1,0 +1,29 @@
+# /etc/systemd/system/fargisguard.service
+#
+# Runs the bot as an unprivileged user with secrets in an EnvironmentFile that
+# only root and that user can read. See docs/DEPLOYMENT.md.
+
+[Unit]
+Description=FargisGuard Discord moderation bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fargisguard
+Group=fargisguard
+WorkingDirectory=/opt/fargisguard
+EnvironmentFile=/etc/fargisguard/env
+ExecStart=/opt/fargisguard/venv/bin/python bot.py
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/fargisguard/data
+
+[Install]
+WantedBy=multi-user.target
