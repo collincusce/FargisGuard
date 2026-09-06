@@ -1,7 +1,7 @@
 ---
 id: subsys.bot-gateway
 type: subsystem
-version: 0.3.0
+version: 0.3.1
 status: active
 depends_on:
   - subsys.pipeline@^0.2
@@ -10,6 +10,7 @@ depends_on:
   - subsys.rules@^0.2
   - subsys.appeals@^0.2
   - subsys.database@^0.2
+  - subsys.dashboard@^0.2
 last_verified: 2026-09-06
 external_deps:
   - ext.discord-api

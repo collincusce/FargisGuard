@@ -3,6 +3,10 @@
 Importing this module never connects; ``main()`` does (D5).
 """
 
+import asyncio
+import functools
+from collections.abc import Callable
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -11,6 +15,7 @@ import config
 import database
 from ai_engine import analyze_message
 from appeals import submit_appeal
+from dashboard import start_dashboard
 from moderation import punish, resolve_pending_action
 from pipeline import Deps, handle_message
 from rules import set_rules
@@ -30,14 +35,28 @@ def mod_log_poster(channel_name: str):
     return post
 
 
+DashboardStarter = Callable[[], "asyncio.Task | None"]
+
+
 class FargisGuard(commands.Bot):
-    def __init__(self, deps: Deps, *, intents: discord.Intents | None = None):
+    def __init__(
+        self,
+        deps: Deps,
+        *,
+        intents: discord.Intents | None = None,
+        dashboard_starter: DashboardStarter | None = None,
+    ):
         super().__init__(command_prefix=commands.when_mentioned, intents=intents or make_intents())
         self.deps = deps
+        self.dashboard_starter = dashboard_starter
+        self.dashboard_task: asyncio.Task | None = None
         register_commands(self)
 
     async def setup_hook(self) -> None:
+        """Runs once, before the gateway connects — never on reconnect (H-11)."""
         await self.tree.sync()
+        if self.dashboard_starter is not None:
+            self.dashboard_task = self.dashboard_starter()
 
     async def on_ready(self) -> None:
         print(f"🤖 FargisGuard online as {self.user}")
@@ -96,6 +115,7 @@ def create_bot(
     mod_log_channel: str = config.MOD_LOG_CHANNEL,
     immune_role_ids: frozenset[int] = config.IMMUNE_ROLE_IDS,
     intents: discord.Intents | None = None,
+    dashboard_starter: DashboardStarter | None = None,
 ) -> FargisGuard:
     deps = Deps(
         analyze=analyze,
@@ -103,7 +123,14 @@ def create_bot(
         log=mod_log_poster(mod_log_channel),
         immune_role_ids=frozenset(immune_role_ids),
     )
-    return FargisGuard(deps, intents=intents)
+    if dashboard_starter is None:
+        dashboard_starter = functools.partial(
+            start_dashboard,
+            token=config.DASHBOARD_TOKEN,
+            host=config.DASHBOARD_HOST,
+            port=config.DASHBOARD_PORT,
+        )
+    return FargisGuard(deps, intents=intents, dashboard_starter=dashboard_starter)
 
 
 def main() -> None:

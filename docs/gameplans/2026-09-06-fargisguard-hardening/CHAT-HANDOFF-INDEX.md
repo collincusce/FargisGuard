@@ -1,7 +1,7 @@
 # Chat Handoff Index — FargisGuard Hardening
 
 > Last updated: 2026-09-06
-> Status: Phase 5 of 8 in progress
+> Status: Phase 6 ready
 
 ## How This Works
 
@@ -34,7 +34,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 2 | Gateway access control and channel checks | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
-| 5 | Dashboard and database safety | 🟡 IN PROGRESS | 2026-09-06 | — | handoffs/PHASE-5-HANDOFF.md |
+| 5 | Dashboard and database safety | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 | 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
 
@@ -71,6 +71,12 @@ What I did not check: whether gpt-4o-mini reliably answers the bare OK sentinel 
 Kick and ban are no longer executed on model output (INVARIANT-02, D2): punish() computes the effective severity from the member's warning history (escalation.py, pure and tabled), applies warn/timeout immediately, and for kick/ban places a 60-minute hold, records a pending_actions row, and returns pending:<id>:<action>; the mod-log notice names the id and the /modaction commands. /modaction (ban_members) approves — executing the ban via guild.ban(discord.Object) so it works after the member leaves, or the kick — or denies, lifting the hold; both mark the row with the moderator and timestamp, and double-resolution or a wrong guild is refused. To support this, database.py was rewritten a phase early (C-04): per-call connections, DB_PATH, lazy schema init, and a column migration for pre-existing appeals tables; every test runs against its own temp file and the suite provably creates no moderation.db. rules.py and appeals.py migrated to connect(). 127 tests, ruff clean.
 
 What I did not check: dashboard.py, which still imports the removed cursor and cannot import until Phase 5 migrates it (no test imports it yet); Discord's actual behavior for member.timeout(None) as 'lift'; whether a 60-minute hold is the right length for a human to respond (config knob later if needed); the migration against a real production moderation.db (only against a synthetic old-shape file).
+
+### Phase 5 — completed 2026-09-06
+
+The dashboard is now fail-closed: create_app(token) refuses an empty token, every data route requires a bearer token compared in constant time (401 with WWW-Authenticate otherwise), the bind defaults to 127.0.0.1, rows are JSON objects read through per-call connections, and a /pending route exposes the review queue. start_dashboard returns None with a warning when DASHBOARD_TOKEN is unset, otherwise creates exactly one asyncio task from an injectable server factory; FargisGuard.setup_hook starts it once after tree.sync, and a test asserts on_ready no longer touches it (H-11 closed). dashboard.py migrated off the removed cursor (H-08 closed). A two-thread interleave test exercises connect() concurrently. fastapi was bumped 0.110 -> 0.141.1 because its TestClient hit the same httpx 0.28 break as H-13. 139 tests, ruff clean.
+
+What I did not check: uvicorn.Server.serve inside the discord.py loop on a real host (only that the task is created from the factory); graceful shutdown ordering between the bot and the dashboard task; whether starlette 1.x changed any behavior the routes rely on beyond what the tests cover; uvicorn 0.29 was not bumped.
 
 ## Accumulated Lessons
 

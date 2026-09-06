@@ -241,10 +241,10 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 
 **Exit criteria**:
 - [x] database exposes a connect() context manager and no module-level connection or cursor; DB_PATH env var controls the file
-- [ ] rules, appeals, moderation, and dashboard all use connect(); a two-thread test performs interleaved reads without error
-- [ ] dashboard routes return 401 without a valid bearer token and JSON objects (not tuples) with it (TestClient tests)
-- [ ] DASHBOARD_HOST defaults to 127.0.0.1; with DASHBOARD_TOKEN unset the dashboard is not started (test on the start helper)
-- [ ] the dashboard is started once from setup_hook as an asyncio task using uvicorn.Server, not from on_ready
+- [x] rules, appeals, moderation, and dashboard all use connect(); a two-thread test performs interleaved reads without error
+- [x] dashboard routes return 401 without a valid bearer token and JSON objects (not tuples) with it (TestClient tests)
+- [x] DASHBOARD_HOST defaults to 127.0.0.1; with DASHBOARD_TOKEN unset the dashboard is not started (test on the start helper)
+- [x] the dashboard is started once from setup_hook as an asyncio task using uvicorn.Server, not from on_ready
 
 ### Phase 6: Appeals workflow
 

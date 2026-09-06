@@ -12,7 +12,7 @@
 | 2 | Gateway access control and channel checks | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
-| 5 | Dashboard and database safety | 🟡 IN PROGRESS | 2026-09-06 | — | handoffs/PHASE-5-HANDOFF.md |
+| 5 | Dashboard and database safety | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 | 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
 
@@ -64,6 +64,16 @@ database_api: database.connect(path=None) contextmanager (sqlite3.Row, commit/ro
 moderation_api: punish -> warn|timeout|pending:<id>:<kick|ban>|immune|none (severity raised by escalation.effective_severity from prior warnings; kick/ban never executed here, member held with a 60-minute timeout); async resolve_pending_action(guild, pending_id, approve|deny, *, moderator_id) -> message; HOLD_MINUTES=60
 escalation_api: escalation.effective_severity(model_severity, prior_warnings): +1 at >=3 priors, +2 at >=6, capped at 4, never lower
 commands: /modaction pending_id decision(approve|deny) — app_commands.checks.has_permissions(ban_members) + default_permissions(ban_members); mod-log notice names the id and both commands
+```
+
+### Phase 5 Outputs
+
+```
+tests: 139 passed (adds test_dashboard incl. a two-thread interleave test)
+dashboard_api: dashboard.create_app(token) -> FastAPI (ValueError on empty token; /health open; /infractions /appeals /pending require Authorization: Bearer <token>, constant-time compare, 401 + WWW-Authenticate otherwise; rows are dicts); dashboard.start_dashboard(*, token, host, port, server_factory=_uvicorn_server) -> asyncio.Task | None (None + warning when token empty)
+config: DASHBOARD_HOST default 127.0.0.1; DASHBOARD_TOKEN default '' (disabled); documented in .env.example with a token-generation one-liner
+bot_wiring: FargisGuard(deps, *, intents, dashboard_starter); create_bot(..., dashboard_starter=None) defaults to functools.partial(start_dashboard, token/host/port from config); setup_hook syncs the tree then starts the dashboard once; on_ready only prints
+requirements: fastapi 0.110.0 -> 0.141.1 (starlette 1.x) — the 0.110 TestClient passed app= to httpx, removed in 0.28
 ```
 
 ## Corrections Log

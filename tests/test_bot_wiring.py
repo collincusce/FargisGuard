@@ -42,8 +42,11 @@ def test_appeal_command_is_registered_for_everyone():
     assert cmd is not None and cmd.default_permissions is None
 
 
-async def test_setup_hook_syncs_the_command_tree():
-    b = _bot()
+async def test_setup_hook_syncs_the_command_tree_and_starts_the_dashboard_once():
+    started = []
+    b = create_bot(
+        analyze=_analyze, punisher=_punish, dashboard_starter=lambda: started.append(1) or None
+    )
     calls = []
 
     async def fake_sync(*, guild=None):
@@ -53,6 +56,13 @@ async def test_setup_hook_syncs_the_command_tree():
     b.tree.sync = fake_sync
     await b.setup_hook()
     assert calls == [None]
+    assert started == [1]
+
+
+def test_dashboard_is_not_started_from_on_ready():
+    import inspect
+
+    assert "dashboard" not in inspect.getsource(FargisGuard.on_ready)
 
 
 def test_no_code_path_replies_with_model_output():

@@ -1,5 +1,5 @@
 discord.py==2.3.2
 openai==2.54.0
 python-dotenv==1.0.0
-fastapi==0.110.0
+fastapi==0.141.1
 uvicorn==0.29.0

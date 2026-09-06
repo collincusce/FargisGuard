@@ -39,12 +39,12 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-04 — Dashboard binds 0.0.0.0 with no authentication
 
 - **Severity**: high
-- **Status**: open (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: dashboard.py
 - **Impact**: /infractions and /appeals expose every user's warning count and full appeal text to anyone who can reach port 8000.
 - **Root cause**: uvicorn.run(host='0.0.0.0') with no auth dependency.
 - **Recommended fix**: Bind 127.0.0.1 by default and require a bearer token from DASHBOARD_TOKEN; front with nginx if remote access is needed.
-
+- **Resolution**: Phase 5: loopback default, DASHBOARD_TOKEN required (create_app refuses empty; start_dashboard skips with a warning), bearer auth on every data route with 401 tests.
 ### H-05 — All failures in the moderation path fail open and silent
 
 - **Severity**: high
@@ -76,12 +76,12 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-08 — Shared SQLite cursor across the bot loop and the dashboard thread
 
 - **Severity**: medium
-- **Status**: partial (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: database.py, dashboard.py, rules.py, appeals.py
 - **Impact**: Interleaved execute/fetchall on one cursor from two threads can return another query's rows or raise.
 - **Root cause**: Module-level connection and cursor with check_same_thread=False.
 - **Recommended fix**: Open a connection per call via a context manager; no module-level cursor.
-- **Resolution**: Phase 4: database.py has no module-level connection or cursor; every helper opens a per-call connection; rules/appeals migrated. dashboard.py still imports the old cursor and is migrated in Phase 5.
+- **Resolution**: Phase 5: dashboard.py migrated to database.connect(); no module-level connection or cursor remains anywhere (test_no_module_level_connection_or_cursor; grep clean). Two-thread interleave test passes.
 ### H-09 — Mentioning the bot returns raw model output — a free GPT proxy
 
 - **Severity**: medium
@@ -104,12 +104,12 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-11 — Slash commands are never synced; on_ready starts the dashboard on every reconnect
 
 - **Severity**: medium
-- **Status**: partial (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: bot.py
 - **Impact**: /appeal and /setrules never appear in Discord; the appeals workflow is unreachable. A gateway reconnect spawns a second uvicorn on a busy port.
 - **Root cause**: No bot.tree.sync(); dashboard started from on_ready instead of setup_hook.
 - **Recommended fix**: Sync in setup_hook; start the dashboard once as an asyncio task via uvicorn.Server.
-- **Resolution**: Phase 2: setup_hook awaits tree.sync (tested). The dashboard is no longer started from on_ready at all; Phase 5 starts it once from setup_hook via uvicorn.Server.
+- **Resolution**: Phase 5: setup_hook syncs the tree and starts the dashboard exactly once via uvicorn.Server as an asyncio task; on_ready only prints (test_dashboard_is_not_started_from_on_ready).
 ### H-12 — README claims features the code does not implement
 
 - **Severity**: low
@@ -128,4 +128,4 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 - **Root cause**: requirements.txt pins direct dependencies only; httpx removed the proxies kwarg in 0.28.0 (2024-11) and openai fixed its client in 1.55.3.
 - **Reproduction**: python -m venv v && v/bin/pip install -r requirements.txt && DISCORD_TOKEN=x OPENAI_API_KEY=y v/bin/python -c 'import ai_engine'
 - **Recommended fix**: Immediate: pin httpx<0.28. Proper: bump openai to a current 1.x, construct the client lazily, and pin transitive deps (pip freeze or a lock file).
-- **Resolution**: Phase 3: openai bumped to 2.54.0, httpx pin removed, AsyncOpenAI verified to construct on httpx 0.28.1; the client is built lazily so import never constructs it.
+- **Resolution**: Phase 5 addendum: the same httpx 0.28 break also hit fastapi 0.110's TestClient (httpx.Client(app=...)); fastapi bumped to 0.141.1. Two pinned libraries broken by one unpinned transitive — a lock file is the real fix (tracked for Phase 7 docs).

@@ -53,6 +53,10 @@ OPENAI_API_KEY = require_env("OPENAI_API_KEY")
 
 MOD_LOG_CHANNEL = optional_env("MOD_LOG_CHANNEL", "mod-logs")
 DASHBOARD_PORT = int(optional_env("DASHBOARD_PORT", "8000"))
+# Loopback by default; put a reverse proxy in front for remote access (D3).
+DASHBOARD_HOST = optional_env("DASHBOARD_HOST", "127.0.0.1")
+# Empty means the dashboard is not started at all.
+DASHBOARD_TOKEN = optional_env("DASHBOARD_TOKEN", "")
 
 # Role IDs (not names) whose holders are never auto-moderated; administrators and
 # anyone with manage_messages are immune regardless (INVARIANT-05).
