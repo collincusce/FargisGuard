@@ -259,10 +259,10 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 6.4 | `tests/test_appeals.py` | M |
 
 **Exit criteria**:
-- [ ] submitting a second appeal while one is pending is rejected (test)
-- [ ] a new appeal posts a notice to mod-log (test)
-- [ ] /appeals lists pending appeals and /appeal_resolve approve calls forgive() for that user and guild (tests); both require manage_guild
-- [ ] appeal rows record status and resolved_by
+- [x] submitting a second appeal while one is pending is rejected (test)
+- [x] a new appeal posts a notice to mod-log (test)
+- [x] /appeals lists pending appeals and /appeal_resolve approve calls forgive() for that user and guild (tests); both require manage_guild
+- [x] appeal rows record status and resolved_by
 
 ### Phase 7: Docs truth-up and deploy hygiene
 

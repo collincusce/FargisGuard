@@ -118,7 +118,7 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 - **Impact**: Warning escalation (count is written, never read), appeals workflow (write-only table, forgive() never called), and human oversight for high-risk actions do not exist; contributors and operators are misled.
 - **Root cause**: Documentation written ahead of implementation.
 - **Recommended fix**: Implement escalation and the appeal resolution path, then truth-up the README.
-- **Resolution**: Phase 4: warning escalation exists (escalation.effective_severity) and human oversight for high-risk actions exists (/modaction). The appeals workflow (Phase 6) and README truth-up (Phase 7) remain.
+- **Resolution**: Phase 6: the appeals workflow exists (dedupe, notice, /appeals, /appeal_resolve calling forgive). Only the README truth-up (Phase 7) remains.
 ### H-13 — Pinned openai 1.10.0 crashes at import against current httpx (unpinned transitive dependency)
 
 - **Severity**: high

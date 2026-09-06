@@ -14,7 +14,7 @@ from discord.ext import commands
 import config
 import database
 from ai_engine import analyze_message
-from appeals import submit_appeal
+from appeals import format_pending_appeals, resolve_appeal_action, submit_appeal
 from dashboard import start_dashboard
 from moderation import punish, resolve_pending_action
 from pipeline import Deps, handle_message
@@ -69,8 +69,46 @@ def register_commands(bot: commands.Bot) -> None:
     @bot.tree.command(name="appeal", description="Appeal a moderation action against you")
     @app_commands.describe(reason="Why the action should be reconsidered")
     async def appeal(interaction: discord.Interaction, reason: str) -> None:
-        submit_appeal(interaction.user.id, interaction.guild_id, reason)
-        await interaction.response.send_message("📨 Appeal submitted.", ephemeral=True)
+        appeal_id = submit_appeal(interaction.user.id, interaction.guild_id, reason)
+        if appeal_id is None:
+            await interaction.response.send_message(
+                "You already have a pending appeal; a moderator will review it.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            f"📨 Appeal #{appeal_id} submitted.", ephemeral=True
+        )
+        await bot.deps.log(
+            interaction.guild,
+            f"📨 **Appeal #{appeal_id}** from {interaction.user.mention}: {reason}\n"
+            f"Run `/appeal_resolve {appeal_id} approve` or `/appeal_resolve {appeal_id} deny`.",
+        )
+
+    @bot.tree.command(name="appeals", description="List pending appeals")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.default_permissions(manage_guild=True)
+    async def appeals(interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(
+            format_pending_appeals(interaction.guild_id), ephemeral=True
+        )
+
+    @bot.tree.command(name="appeal_resolve", description="Approve or deny an appeal")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.describe(appeal_id="The #id from the mod-log notice", decision="approve or deny")
+    @app_commands.choices(
+        decision=[
+            app_commands.Choice(name="approve", value="approve"),
+            app_commands.Choice(name="deny", value="deny"),
+        ]
+    )
+    async def appeal_resolve(
+        interaction: discord.Interaction, appeal_id: int, decision: str
+    ) -> None:
+        result = resolve_appeal_action(
+            interaction.guild_id, appeal_id, decision, moderator_id=interaction.user.id
+        )
+        await interaction.response.send_message(result, ephemeral=True)
 
     @bot.tree.command(name="setrules", description="Replace this server's moderation rules")
     @app_commands.checks.has_permissions(administrator=True)

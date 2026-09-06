@@ -177,3 +177,40 @@ def resolve_pending(pending_id: int, status: str, resolved_by: int) -> bool:
             (status, resolved_by, now_iso(), pending_id),
         )
         return cur.rowcount == 1
+
+
+# --- appeals --------------------------------------------------------------------
+
+
+def has_pending_appeal(user_id: int, guild_id: int) -> bool:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM appeals WHERE user_id=? AND guild_id=? AND status='pending' LIMIT 1",
+            (user_id, guild_id),
+        ).fetchone()
+        return row is not None
+
+
+def get_appeal(appeal_id: int) -> dict | None:
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM appeals WHERE id=?", (appeal_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def list_pending_appeals(guild_id: int) -> list[dict]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM appeals WHERE guild_id=? AND status='pending' ORDER BY id", (guild_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def resolve_appeal(appeal_id: int, status: str, resolved_by: int) -> bool:
+    """Mark an appeal approved/denied. False if it was not pending."""
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE appeals SET status=?, resolved_by=?, resolved_at=? "
+            "WHERE id=? AND status='pending'",
+            (status, resolved_by, now_iso(), appeal_id),
+        )
+        return cur.rowcount == 1

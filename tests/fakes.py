@@ -74,6 +74,10 @@ class FakeMember:
     kicks: list[str | None] = field(default_factory=list)
     bans: list[str | None] = field(default_factory=list)
 
+    @property
+    def mention(self) -> str:
+        return f"<@{self.id}>"
+
     async def send(self, content: str) -> None:
         if self.dms_closed:
             raise forbidden("Cannot send messages to this user")
@@ -125,3 +129,24 @@ class FakeOpenAI:
     def __init__(self, reply: str = "OK", error: Exception | None = None):
         self.completions = FakeCompletions(reply, error)
         self.chat = SimpleNamespace(completions=self.completions)
+
+
+@dataclass
+class FakeResponse:
+    sent: list[tuple[str, bool]] = field(default_factory=list)
+
+    async def send_message(self, content: str, *, ephemeral: bool = False) -> None:
+        self.sent.append((content, ephemeral))
+
+
+@dataclass
+class FakeInteraction:
+    """Enough of discord.Interaction to drive a slash-command callback offline."""
+
+    user: FakeMember = field(default_factory=FakeMember)
+    guild: FakeGuild = field(default_factory=FakeGuild)
+    response: FakeResponse = field(default_factory=FakeResponse)
+
+    @property
+    def guild_id(self) -> int:
+        return self.guild.id

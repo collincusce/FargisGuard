@@ -1,7 +1,7 @@
 # Chat Handoff Index — FargisGuard Hardening
 
 > Last updated: 2026-09-06
-> Status: Phase 6 ready
+> Status: Phase 7 ready
 
 ## How This Works
 
@@ -35,7 +35,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
-| 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
+| 6 | Appeals workflow | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-6-HANDOFF.md |
 | 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
 
 **Status legend**: ⬜ NOT STARTED · 🟢 READY · 🟡 IN PROGRESS · ✅ COMPLETE · ⚠️ BLOCKED · 🔴 FAILED
@@ -77,6 +77,12 @@ What I did not check: dashboard.py, which still imports the removed cursor and c
 The dashboard is now fail-closed: create_app(token) refuses an empty token, every data route requires a bearer token compared in constant time (401 with WWW-Authenticate otherwise), the bind defaults to 127.0.0.1, rows are JSON objects read through per-call connections, and a /pending route exposes the review queue. start_dashboard returns None with a warning when DASHBOARD_TOKEN is unset, otherwise creates exactly one asyncio task from an injectable server factory; FargisGuard.setup_hook starts it once after tree.sync, and a test asserts on_ready no longer touches it (H-11 closed). dashboard.py migrated off the removed cursor (H-08 closed). A two-thread interleave test exercises connect() concurrently. fastapi was bumped 0.110 -> 0.141.1 because its TestClient hit the same httpx 0.28 break as H-13. 139 tests, ruff clean.
 
 What I did not check: uvicorn.Server.serve inside the discord.py loop on a real host (only that the task is created from the factory); graceful shutdown ordering between the bot and the dashboard task; whether starlette 1.x changed any behavior the routes rely on beyond what the tests cover; uvicorn 0.29 was not bumped.
+
+### Phase 6 — completed 2026-09-06
+
+Appeals are now a workflow instead of a write-only table: submit_appeal refuses a second pending appeal per member per guild and returns the new id; /appeal answers ephemerally and posts a mod-log notice naming the id and the resolve commands; /appeals lists the queue and /appeal_resolve approves (clearing the member's warnings via forgive(), which was previously dead code) or denies, recording moderator and timestamp; both moderator commands carry manage_guild checks and default permissions. Tests drive the actual slash-command callbacks with a FakeInteraction, so the wiring — not just the functions — is covered. 148 tests, ruff clean.
+
+What I did not check: whether a member should be able to appeal a *pending* kick/ban specifically (appeals clear warnings; they do not touch pending_actions — a moderator uses /modaction deny for that); rate limiting on /appeal beyond the one-pending rule; Discord's ephemeral-response semantics on a real interaction.
 
 ## Accumulated Lessons
 

@@ -13,7 +13,7 @@
 | 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
-| 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
+| 6 | Appeals workflow | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-6-HANDOFF.md |
 | 7 | Docs truth-up and deploy hygiene | ⬜ NOT STARTED | — | — | handoffs/PHASE-7-HANDOFF.md |
 
 ## Outputs Registry
@@ -74,6 +74,14 @@ dashboard_api: dashboard.create_app(token) -> FastAPI (ValueError on empty token
 config: DASHBOARD_HOST default 127.0.0.1; DASHBOARD_TOKEN default '' (disabled); documented in .env.example with a token-generation one-liner
 bot_wiring: FargisGuard(deps, *, intents, dashboard_starter); create_bot(..., dashboard_starter=None) defaults to functools.partial(start_dashboard, token/host/port from config); setup_hook syncs the tree then starts the dashboard once; on_ready only prints
 requirements: fastapi 0.110.0 -> 0.141.1 (starlette 1.x) — the 0.110 TestClient passed app= to httpx, removed in 0.28
+```
+
+### Phase 6 Outputs
+
+```
+tests: 148 passed (adds test_appeals, driving the real command callbacks with FakeInteraction)
+appeals_api: appeals.submit_appeal(user_id, guild_id, reason) -> id | None (None when one is pending); appeals.format_pending_appeals(guild_id); appeals.resolve_appeal_action(guild_id, appeal_id, approve|deny, *, moderator_id) -> message (approve calls database.forgive); database.has_pending_appeal/get_appeal/list_pending_appeals/resolve_appeal
+commands: /appeal reason (everyone; ephemeral; posts a mod-log notice naming the id and both resolve commands); /appeals (manage_guild); /appeal_resolve appeal_id approve|deny (manage_guild). Full tree: appeal, appeal_resolve, appeals, modaction, setrules
 ```
 
 ## Corrections Log
