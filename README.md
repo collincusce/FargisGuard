@@ -47,7 +47,16 @@ message ──▶ resolve scope (guild/category/channel/thread) ──▶ classi
 | `/appeals` | Manage Guild | List pending appeals. |
 | `/appeal_resolve <id> approve\|deny` | Manage Guild | Approve clears the member's warnings; deny records the decision. |
 | `/modaction <id> approve\|deny` | Ban Members | Execute or cancel a held kick/ban. Deny lifts the timeout. |
-| `/setrules <text>` | Administrator | Replace the guild's rules. |
+| `/setrules <text>` | Administrator | Replace the server-wide rules. |
+| `/rules category <category> <text>` | Administrator | Rules for every channel in a category, on top of the server rules. |
+| `/rules channel <channel> <text>` | Administrator | Rules for one channel, on top of the wider scopes. |
+| `/rules thread <channel> <text>` | Administrator | Rules for replies inside that channel's threads. |
+| `/rules clear category\|channel\|thread <target>` | Administrator | Remove one scope's rules. |
+| `/rules show <channel> [in_thread]` | Administrator | The exact text the classifier enforces there, safety floor included. |
+
+Rules are plain sentences ("nudity is fine here, never minors or animal
+harm"; "video posts only — replies are plain text"). Narrower scopes add to
+wider ones; the safety floor sits above all of them.
 
 Replies are ephemeral. Commands are synced globally on startup; allow up to an
 hour for Discord to show them the first time.

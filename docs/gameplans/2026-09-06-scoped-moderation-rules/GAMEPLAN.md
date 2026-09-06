@@ -204,11 +204,11 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 5.3 | FakeInteraction permission tests; existing /setrules tests unchanged | 1h |
 
 **Exit criteria**:
-- [ ] Slash commands exist to set, show, and clear rules at category, channel, and thread scope; targets are channel/category select options, not string names
-- [ ] Every authoring command checks administrator permission before any database write, proven by a test using FakeInteraction
-- [ ] /showrules <channel> renders the composed effective text including the floor region, so what a moderator sees equals what build_messages sends
-- [ ] Existing /setrules behaviour and its tests are unchanged
-- [ ] Full suite green
+- [x] Slash commands exist to set, show, and clear rules at category, channel, and thread scope; targets are channel/category select options, not string names
+- [x] Every authoring command checks administrator permission before any database write, proven by a test using FakeInteraction
+- [x] /showrules <channel> renders the composed effective text including the floor region, so what a moderator sees equals what build_messages sends
+- [x] Existing /setrules behaviour and its tests are unchanged
+- [x] Full suite green
 
 ### Phase 6: Wire-through and measurement
 

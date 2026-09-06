@@ -1,7 +1,7 @@
 # Chat Handoff Index — Scoped Moderation Rules
 
 > Last updated: 2026-09-06
-> Status: Phase 5 ready
+> Status: Phase 6 ready
 
 ## How This Works
 
@@ -34,7 +34,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
-| 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
+| 5 | Authoring commands | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
 **Status legend**: ⬜ NOT STARTED · 🟢 READY · 🟡 IN PROGRESS · ✅ COMPLETE · ⚠️ BLOCKED · 🔴 FAILED
@@ -70,6 +70,12 @@ Docs truthed: README, ARCHITECTURE, SECURITY threat model (NSFW injection now in
 composer.py turns a ScopeChain plus a guild's fragments into ResolvedRules(text, key). compose_rules is pure and byte-deterministic: fragments render widest-first under fixed labels, whitespace that carries no meaning is normalised, empty fragments are omitted, and key is sha256 of the text — so two channels that inherit the same rules share a key, which is exactly what batching and caching will group on. rules.snapshot(guild_id) is the composer's one read: version plus every fragment in a single connection, seeding DEFAULT_RULES on a cold guild inside that same connection. RulesResolver memoises ScopeChain → (version, ResolvedRules); a miss costs one connection, a hit one version probe, a stale entry both, and any write anywhere in the guild (including a no-op delete or the default seeding) invalidates. 12 new tests; suite 196 green, ruff clean.
 
 Nothing consumes the resolver yet — Phase 6 wires ai_engine.analyze_message to it; Phase 5's /showrules renders the same compose_rules output so moderators see what the model sees.
+
+### Phase 5 — completed 2026-09-06
+
+Moderators can now author scoped rules from Discord. bot.py registers a /rules command group — category, channel, thread, clear, show — Administrator-only by both default permissions and a has_permissions check on every subcommand, guild-only, with targets as channel/category parameters so Discord renders a select and only snowflake IDs reach the database (D1, INVARIANT-05). Logic lives in rulecmds.py as reply-returning handlers: set_reply trims, bounds (4000 chars per scope), stores, and reports the new rules version; clear_reply says whether anything existed; show_reply resolves the same ScopeChain a message would (reusing channels.resolve_scope, with an in_thread flag or a Thread object), composes through compose_rules, and renders floor + text + key prefix inside Discord's 2000-char limit — a test asserts it equals what the classifier's payload would carry. /setrules is untouched.
+
+FakeInteraction gained a permissions property so has_permissions predicates run offline; a parametrised test proves each subcommand rejects a Manage-Messages moderator and accepts an Administrator. 16 new tests; suite 212, ruff clean. README, ARCHITECTURE, CHANGELOG, bot-gateway subsystem body updated; bot-gateway 1.1.0.
 
 ## Accumulated Lessons
 

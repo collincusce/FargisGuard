@@ -13,12 +13,13 @@ from discord.ext import commands
 
 import config
 import database
+import rulecmds
 from ai_engine import analyze_message
 from appeals import format_pending_appeals, resolve_appeal_action, submit_appeal
 from dashboard import start_dashboard
 from moderation import punish, resolve_pending_action
 from pipeline import Deps, handle_message
-from rules import set_rules
+from rules import CATEGORY, CHANNEL, THREAD, set_rules
 
 
 def make_intents() -> discord.Intents:
@@ -117,6 +118,73 @@ def register_commands(bot: commands.Bot) -> None:
     async def setrules(interaction: discord.Interaction, rules: str) -> None:
         set_rules(interaction.guild_id, rules)
         await interaction.response.send_message("📜 Rules updated.", ephemeral=True)
+
+    rules_group = app_commands.Group(
+        name="rules",
+        description="Rules for a category, channel, or a channel's threads",
+        default_permissions=discord.Permissions(administrator=True),
+        guild_only=True,
+    )
+
+    @rules_group.command(name="category", description="Set rules for every channel in a category")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(category="The category", rules="Rules text, on top of the server rules")
+    async def rules_category(
+        interaction: discord.Interaction, category: discord.CategoryChannel, rules: str
+    ) -> None:
+        reply = rulecmds.set_reply(interaction.guild_id, CATEGORY, category, rules)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    @rules_group.command(name="channel", description="Set rules for one channel")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(channel="The channel", rules="Rules text, on top of the wider scopes")
+    async def rules_channel(
+        interaction: discord.Interaction,
+        channel: discord.TextChannel | discord.ForumChannel | discord.VoiceChannel,
+        rules: str,
+    ) -> None:
+        reply = rulecmds.set_reply(interaction.guild_id, CHANNEL, channel, rules)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    @rules_group.command(name="thread", description="Set rules for the threads under a channel")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(channel="The parent channel", rules="Rules for replies in its threads")
+    async def rules_thread(
+        interaction: discord.Interaction,
+        channel: discord.TextChannel | discord.ForumChannel,
+        rules: str,
+    ) -> None:
+        reply = rulecmds.set_reply(interaction.guild_id, THREAD, channel, rules)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    @rules_group.command(name="clear", description="Remove the rules set at one scope")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(scope="Which scope to clear", target="The category or channel")
+    @app_commands.choices(
+        scope=[
+            app_commands.Choice(name="category", value=CATEGORY),
+            app_commands.Choice(name="channel", value=CHANNEL),
+            app_commands.Choice(name="thread", value=THREAD),
+        ]
+    )
+    async def rules_clear(
+        interaction: discord.Interaction, scope: str, target: discord.abc.GuildChannel
+    ) -> None:
+        reply = rulecmds.clear_reply(interaction.guild_id, scope, target)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    @rules_group.command(name="show", description="Show what the moderator AI enforces here")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(channel="A channel or thread", in_thread="Rules for its threads")
+    async def rules_show(
+        interaction: discord.Interaction,
+        channel: discord.TextChannel | discord.ForumChannel | discord.VoiceChannel | discord.Thread,
+        in_thread: bool = False,
+    ) -> None:
+        reply = rulecmds.show_reply(interaction.guild, channel, in_thread=in_thread)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    bot.tree.add_command(rules_group)
 
     @bot.tree.command(name="modaction", description="Approve or deny a pending kick/ban")
     @app_commands.checks.has_permissions(ban_members=True)

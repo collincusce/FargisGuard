@@ -185,3 +185,8 @@ class FakeInteraction:
     @property
     def guild_id(self) -> int:
         return self.guild.id
+
+    @property
+    def permissions(self) -> FakePermissions:
+        """What app_commands.checks.has_permissions reads."""
+        return self.user.guild_permissions

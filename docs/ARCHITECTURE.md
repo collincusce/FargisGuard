@@ -24,7 +24,8 @@ Discord gateway ─▶ bot-gateway (bot.py) ─▶ pipeline (pipeline.py)
 `commands.Bot`) with narrowed intents and injected `Deps`; `main()` runs it.
 `setup_hook` syncs the slash-command tree and starts the dashboard exactly once.
 `on_message` delegates to `pipeline.handle_message`. Slash commands: `/appeal`,
-`/appeals`, `/appeal_resolve`, `/modaction`, `/setrules` — moderator commands
+`/appeals`, `/appeal_resolve`, `/modaction`, `/setrules`, and the `/rules`
+group (category / channel / thread / clear / show, handlers in `rulecmds.py`) — moderator commands
 carry `app_commands` permission checks *and* default permissions.
 
 ### pipeline

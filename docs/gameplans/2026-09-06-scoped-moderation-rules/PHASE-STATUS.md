@@ -12,7 +12,7 @@
 | 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
-| 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
+| 5 | Authoring commands | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
 ## Outputs Registry
@@ -51,6 +51,13 @@ floor_location: ai_engine.SAFETY_FLOOR (code constant: CSAM, animal cruelty, cre
 ```
 test_count_after_phase_4: 196 passed (184 + 12 in tests/test_composer.py); ruff clean
 composer_api: composer.py: compose_rules(chain, fragments) -> ResolvedRules(text, key=sha256); scope_keys(chain); RulesResolver(snapshot=rules.snapshot, version=rules.get_rules_version).resolve(chain) memoised by (ScopeChain -> version); get_resolver() process-wide. rules.snapshot(guild_id) -> (version, fragments) in ONE connection, seeds DEFAULT_RULES on cold guild. Render labels: '## Server rules' / '## Category rules (...)' / '## Channel rules (...)' / '## Thread rules (...)'.
+```
+
+### Phase 5 Outputs
+
+```
+test_count_after_phase_5: 212 passed (196 + 16 in tests/test_rulecmds.py); ruff clean
+rules_commands: /rules group (Administrator default perms + has_permissions check on each, guild_only): category <CategoryChannel> <text>; channel <Text|Forum|Voice> <text>; thread <Text|Forum> <text> (keyed by parent id); clear <category|channel|thread> <GuildChannel>; show <Text|Forum|Voice|Thread> [in_thread]. Handlers in rulecmds.py: set_reply / clear_reply / show_reply / chain_for. Per-scope text capped at 4000 chars; show truncates to fit 2000. FakeInteraction.permissions added so has_permissions predicates run offline.
 ```
 
 ## Corrections Log
