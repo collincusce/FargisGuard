@@ -3,3 +3,47 @@ venv/
 __pycache__/
 *.db
 *.log
+.clauderizer/index.json
+.clauderizer/abstract_index.json
+.clauderizer/proposals.local.toml
+.clauderizer/telemetry.jsonl
+.clauderizer/dreams.jsonl
+.clauderizer/dreams.schedule.toml
+.clauderizer/sessions.jsonl
+.clauderizer/refusals.jsonl
+.clauderizer/seen.local.jsonl
+.clauderizer/proposals.dream.jsonl
+.clauderizer/dreams.watermark.json
+.clauderizer/revision.json
+.clauderizer/hook.sh
+.clauderizer/hook.cmd
+.clauderizer/write.lock
+.clauderizer/baseline.json
+.claude/settings.json
+
+# ── Secrets & security material (never commit) ──────────────────────────
+.env
+.env.*
+!.env.example
+# Private keys / certs / keystores
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+id_ecdsa
+*_rsa
+*_ed25519
+# Cloud / service credentials
+*.crt
+credentials
+credentials.json
+service-account*.json
+*.credentials
+secrets.*
+*.secret
+.aws/
+.ssh/

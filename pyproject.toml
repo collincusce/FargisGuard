@@ -1,0 +1,21 @@
+[project]
+name = "fargisguard"
+version = "0.2.0"
+description = "AI-assisted trust & safety bot for Discord communities"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+addopts = "-q"
+# discord.py imports the stdlib audioop module for voice; not ours to fix.
+filterwarnings = ["ignore:'audioop' is deprecated:DeprecationWarning"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["venv", "docs", ".clauderizer"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

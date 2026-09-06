@@ -1,0 +1,31 @@
+[clauderizer]
+version = "1"
+size = "standard"
+preflight_checks = ["branch_base", "clean_tree", "tests", "build", "deps_spotcheck", "branch_creation", "cascade_hygiene", "handoff_presence"]
+preflight_advisory = []
+procedure_version = "1.13.0"
+
+[host]
+profile = "python"
+target = "claude-code"
+enabled = ["*"]
+session_host = "native"
+
+[paths]
+docs = "docs"
+gameplans = "docs/gameplans"
+
+[memory]
+active_lessons_warn = 12
+project_lessons_warn = 20
+
+[modules]
+enabled = ["DECISIONS", "INVARIANTS", "HARDENING", "GLOSSARY", "ENFORCEMENT"]
+
+[rituals]
+preflight = true
+cascade = true
+amendments = false
+
+[focus]
+id = ""

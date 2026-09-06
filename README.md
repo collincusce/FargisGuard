@@ -1,38 +1,119 @@
 # FargisGuard
 
-FargisGuard is an AI-assisted trust & safety platform for Discord communities.
+AI-assisted trust & safety bot for Discord communities. Every message in a
+guild is classified against that guild's own written rules; low-severity
+violations are handled immediately and reversibly, and high-severity ones are
+**held for a human moderator** — the model never kicks or bans on its own.
 
-## Features
+## How moderation works
 
-- AI-assisted moderation
-- Warning escalation system
-- Appeals workflow
-- Human-supervised NSFW isolation
-- Moderation logging
-- FastAPI moderation dashboard
-- Slash command administration
-- Async OpenAI moderation pipeline
+```
+message ──▶ exempt? (channel flagged NSFW) ──▶ classifier (gpt-4o-mini)
+                                                    │
+                       reply "OK" ◀─────────────────┤──▶ VIOLATION|sev|reason
+                       (silent)                     │         │
+                       anything else ──▶ mod-log    │    escalate by prior warnings
+                       ("needs a human")            │         │
+                                                    │    1 warn (DM)      ─┐ immediate
+                                                    │    2 timeout 15 min ─┘
+                                                    │    3 kick ┐ held: 60-min timeout +
+                                                    │    4 ban  ┘ pending action → /modaction
+```
 
-## Stack
+- **Guild-authored rules.** `/setrules` stores the rules text the classifier
+  enforces. Rules are passed to the model as data, not as instructions.
+- **Strict verdicts.** Only an exact `VIOLATION|<1-4>|<reason>` line is acted
+  on. Anything else the model says is posted to `#mod-logs` for a human and
+  nothing happens automatically.
+- **Escalation.** Prior warnings raise the effective severity (+1 at 3, +2 at 6,
+  capped at 4).
+- **Human gate.** Severity 3–4 places the member on a 60-minute timeout and
+  records a pending action; a moderator runs `/modaction <id> approve` or
+  `deny`.
+- **Fail closed.** If OpenAI or Discord errors mid-pipeline, the message and the
+  error go to `#mod-logs`. No silent pass-through.
+- **NSFW isolation.** Channels Discord marks NSFW are skipped entirely and rely
+  on human moderation. A channel merely *named* `nsfw` is not exempt.
+- **Immunity.** Administrators, anyone with *Manage Messages*, and the role IDs
+  in `IMMUNE_ROLE_IDS` are never auto-moderated.
 
-- Python
-- Discord.py
-- OpenAI API
-- FastAPI
-- SQLite
-- AWS EC2
+## Slash commands
 
-## Architecture
+| Command | Who | What |
+|---|---|---|
+| `/appeal <reason>` | everyone | File an appeal (one pending per member). Posts a notice to `#mod-logs`. |
+| `/appeals` | Manage Guild | List pending appeals. |
+| `/appeal_resolve <id> approve\|deny` | Manage Guild | Approve clears the member's warnings; deny records the decision. |
+| `/modaction <id> approve\|deny` | Ban Members | Execute or cancel a held kick/ban. Deny lifts the timeout. |
+| `/setrules <text>` | Administrator | Replace the guild's rules. |
 
-FargisGuard uses:
-- event-driven moderation
-- async AI analysis
-- human oversight for high-risk actions
-- isolated NSFW moderation zones
+Replies are ephemeral. Commands are synced globally on startup; allow up to an
+hour for Discord to show them the first time.
+
+## Setup
+
+Requires Python 3.11+.
+
+```bash
+python3 -m venv venv && . venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # fill in DISCORD_TOKEN and OPENAI_API_KEY
+python bot.py
+```
+
+In the [Discord developer portal](https://discord.com/developers/applications)
+enable the **Message Content** and **Server Members** privileged intents. Invite
+the bot with *Send Messages*, *Manage Messages*, *Moderate Members*, *Kick
+Members*, and *Ban Members*, and create a text channel named `mod-logs` (or
+whatever `MOD_LOG_CHANNEL` is set to).
+
+### Environment variables
+
+Secrets come only from the environment — `.env` locally, a systemd
+`EnvironmentFile` in production. Nothing secret is ever committed.
+
+| Variable | Required | Default | Meaning |
+|---|---|---|---|
+| `DISCORD_TOKEN` | yes | — | Bot token. Startup fails with a clear error if missing. |
+| `OPENAI_API_KEY` | yes | — | OpenAI key for the classifier. |
+| `DB_PATH` | no | `moderation.db` | SQLite file (created on first use). |
+| `MOD_LOG_CHANNEL` | no | `mod-logs` | Text channel that receives notices. |
+| `DASHBOARD_TOKEN` | no | *(empty)* | Bearer token for the dashboard. **Empty disables the dashboard.** |
+| `DASHBOARD_HOST` | no | `127.0.0.1` | Dashboard bind address. Keep loopback; reverse-proxy for remote access. |
+| `DASHBOARD_PORT` | no | `8000` | Dashboard port. |
+| `IMMUNE_ROLE_IDS` | no | *(empty)* | Comma-separated role IDs that are never auto-moderated. |
+
+## Dashboard
+
+A read-only JSON API served in-process. It starts only when `DASHBOARD_TOKEN`
+is set, listens on loopback by default, and requires the token on every data
+route:
+
+```bash
+curl -H "Authorization: Bearer $DASHBOARD_TOKEN" http://127.0.0.1:8000/infractions
+curl -H "Authorization: Bearer $DASHBOARD_TOKEN" http://127.0.0.1:8000/appeals
+curl -H "Authorization: Bearer $DASHBOARD_TOKEN" http://127.0.0.1:8000/pending
+curl http://127.0.0.1:8000/health          # no token needed
+```
+
+## Development
+
+```bash
+pip install -r requirements-dev.txt
+pytest          # fully offline: Discord, OpenAI, and the DB file are faked/isolated
+ruff check .
+```
+
+Project memory (decisions, invariants, the hardening log, and the gameplan
+that produced this version) lives under `docs/` and is maintained with
+[Clauderizer](https://github.com/collincusce/Clauderizer). Start with
+`docs/ARCHITECTURE.md` and `docs/SECURITY.md`.
 
 ## Deployment
 
-Hosted on AWS EC2 with:
-- systemd service management
-- GitHub deployment workflow
-- environment-based secrets
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the EC2 + systemd setup,
+the `EnvironmentFile` layout, and the SSH key-rotation runbook.
+
+## Stack
+
+Python 3.11 · discord.py 2.3 · OpenAI (`gpt-4o-mini`) · FastAPI + uvicorn · SQLite
