@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from database import cursor
+
 from config import DASHBOARD_PORT
+from database import cursor
 
 app = FastAPI()
 

@@ -1,13 +1,45 @@
+"""Runtime configuration.
+
+Every secret comes from the environment (INVARIANT-01). Required variables
+are validated at import so a misconfigured service fails at startup with the
+variable's name instead of failing later inside a Discord or OpenAI call.
+"""
+
 import os
+from collections.abc import Mapping
+
 from dotenv import load_dotenv
+
+
+class ConfigError(RuntimeError):
+    """A required environment variable is missing or blank."""
+
+
+def require_env(name: str, env: Mapping[str, str] | None = None) -> str:
+    """Return the non-blank value of ``name`` or raise ``ConfigError`` naming it."""
+    source = os.environ if env is None else env
+    value = (source.get(name) or "").strip()
+    if not value:
+        raise ConfigError(
+            f"{name} is not set; add it to .env (local) or the service EnvironmentFile (EC2)"
+        )
+    return value
+
+
+def optional_env(name: str, default: str, env: Mapping[str, str] | None = None) -> str:
+    """Return ``name`` from the environment, or ``default`` when unset or blank."""
+    source = os.environ if env is None else env
+    value = (source.get(name) or "").strip()
+    return value or default
+
 
 load_dotenv()
 
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DISCORD_TOKEN = require_env("DISCORD_TOKEN")
+OPENAI_API_KEY = require_env("OPENAI_API_KEY")
 
-MOD_LOG_CHANNEL = "mod-logs"
+MOD_LOG_CHANNEL = optional_env("MOD_LOG_CHANNEL", "mod-logs")
 NSFW_CHANNEL_NAME = "nsfw"
-DASHBOARD_PORT = 8000
+DASHBOARD_PORT = int(optional_env("DASHBOARD_PORT", "8000"))
 
 IMMUNE_ROLES = ["Admin", "Moderator"]

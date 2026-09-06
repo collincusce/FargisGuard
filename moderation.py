@@ -1,6 +1,8 @@
 import discord
-from database import add_warning
+
 from config import IMMUNE_ROLES
+from database import add_warning
+
 
 async def punish(member: discord.Member, severity: int, reason: str) -> str:
     if any(role.name in IMMUNE_ROLES for role in member.roles):

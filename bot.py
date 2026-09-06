@@ -1,17 +1,14 @@
-import discord
-from discord.ext import commands
 import asyncio
 
-from config import (
-    DISCORD_TOKEN,
-    MOD_LOG_CHANNEL,
-    NSFW_CHANNEL_NAME
-)
+import discord
+from discord.ext import commands
+
+import dashboard
 from ai_engine import analyze_message
+from appeals import submit_appeal
+from config import DISCORD_TOKEN, MOD_LOG_CHANNEL, NSFW_CHANNEL_NAME
 from moderation import punish
 from rules import set_rules
-from appeals import submit_appeal
-import dashboard
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)

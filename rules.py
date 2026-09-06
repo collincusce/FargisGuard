@@ -1,4 +1,4 @@
-from database import cursor, conn
+from database import conn, cursor
 
 DEFAULT_RULES = """
 1. No harassment or hate speech

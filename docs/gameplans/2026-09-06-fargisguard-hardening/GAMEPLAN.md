@@ -136,11 +136,11 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 0.5 | `tests/test_config.py` covering require_env present/missing; run `pytest -q` and `ruff check .` green | S |
 
 **Exit criteria**:
-- [ ] FargisGuard.pem is absent from the working tree and *.pem, *.key, .env.* are gitignored
-- [ ] .env.example lists every variable config.py reads, with no real values
-- [ ] config.py raises a clear error at import when DISCORD_TOKEN or OPENAI_API_KEY is missing (unit-tested via a pure require_env function)
-- [ ] pytest -q passes with at least one test and ruff check . is clean; baseline recorded by pre-flight
-- [ ] pyproject.toml carries pytest and ruff configuration; requirements-dev.txt pins pytest, pytest-asyncio, ruff
+- [x] FargisGuard.pem is absent from the working tree and *.pem, *.key, .env.* are gitignored
+- [x] .env.example lists every variable config.py reads, with no real values
+- [x] config.py raises a clear error at import when DISCORD_TOKEN or OPENAI_API_KEY is missing (unit-tested via a pure require_env function)
+- [x] pytest -q passes with at least one test and ruff check . is clean; baseline recorded by pre-flight
+- [x] pyproject.toml carries pytest and ruff configuration; requirements-dev.txt pins pytest, pytest-asyncio, ruff
 
 ### Phase 1: Verdict parsing and punishment correctness
 
