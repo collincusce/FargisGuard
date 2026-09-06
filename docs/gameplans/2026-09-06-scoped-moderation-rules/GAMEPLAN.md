@@ -101,7 +101,7 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 - [x] docs/DEPLOYMENT.md contains a pre-restart `cp` backup line for moderation.db in the deploy sequence
 - [x] O-01 has a recorded diagnosis (journalctl output summarised) or is explicitly deferred with the token-baseline criterion of Phase 6 marked blocked
 - [x] A written scope-model note in the gameplan states the four scopes, the binary channel/thread rule, and the content-hash key, so later phases do not re-derive it
-- [ ] Working tree clean; the plan commit is on claude/moderation-bot-optimization-qpmfn2
+- [x] Working tree clean; the plan commit is on claude/moderation-bot-optimization-qpmfn2
 
 ### Phase 1: Scoped rules schema
 
@@ -117,12 +117,12 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 1.5 | Migration test on a temp DB seeded with a legacy row; version-bump tests | 1h |
 
 **Exit criteria**:
-- [ ] database.py has a one-shot-script migration primitive alongside _ensure_column, applied idempotently inside init_db
-- [ ] scoped_rules table exists with a unique key on (guild_id, scope_kind, scope_id) and a per-guild rules version counter
-- [ ] A test opens a temp DB containing a legacy rules row, runs init_db, and asserts an identical guild-scope row exists in scoped_rules and the legacy row is untouched
-- [ ] rules.get_rules(guild_id) returns the guild-scope text and still seeds DEFAULT_RULES on a cold guild; the existing test_ai_engine loader test passes unchanged
-- [ ] Every write path (set, clear, default seeding) bumps the guild's version counter, proven by a test
-- [ ] Test count >= 148 and the full suite is green
+- [x] database.py has a one-shot-script migration primitive alongside _ensure_column, applied idempotently inside init_db
+- [x] scoped_rules table exists with a unique key on (guild_id, scope_kind, scope_id) and a per-guild rules version counter
+- [x] A test opens a temp DB containing a legacy rules row, runs init_db, and asserts an identical guild-scope row exists in scoped_rules and the legacy row is untouched
+- [x] rules.get_rules(guild_id) returns the guild-scope text and still seeds DEFAULT_RULES on a cold guild; the existing test_ai_engine loader test passes unchanged
+- [x] Every write path (set, clear, default seeding) bumps the guild's version counter, proven by a test
+- [x] Test count >= 148 and the full suite is green
 
 ### Phase 2: Scope resolver
 
