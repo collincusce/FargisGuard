@@ -1,7 +1,7 @@
 ---
 id: subsys.ai-engine
 type: subsystem
-version: 0.1.0
+version: 0.2.0
 status: active
 depends_on:
   - subsys.rules@^0.1

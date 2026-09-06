@@ -1,7 +1,7 @@
 # Chat Handoff Index — FargisGuard Hardening
 
 > Last updated: 2026-09-06
-> Status: Phase 3 ready
+> Status: Phase 4 ready
 
 ## How This Works
 
@@ -32,7 +32,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 0 | Bootstrap: dev tooling and secrets hygiene | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Verdict parsing and punishment correctness | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Gateway access control and channel checks | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
-| 3 | Async, fail-closed AI path | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
+| 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
@@ -60,6 +60,12 @@ bot.py is now a factory (create_bot -> FargisGuard subclass of commands.Bot) wit
 
 What I did not check: the interaction-time behavior of the permission check against a live guild (only that it is registered on the command); tree.sync against Discord (global sync propagation and rate limits); whether messages=True alone delivers thread messages the way the old Intents.all() did; the EC2 host's installed httpx version.
 
+### Phase 3 — completed 2026-09-06
+
+ai_engine now builds an AsyncOpenAI client lazily (15s timeout) and awaits it, with the client injectable so no test constructs a real one (an autouse fixture asserts it). The system prompt is static; the guild's rules and the message travel as <rules>/<message> data in the user turn with closing tags neutralized, so /setrules is no longer a system-prompt channel (D6). A clean reply is the exact sentinel OK (D8). pipeline.handle_message fails closed: empty messages are skipped before any API call; analyzer and punisher exceptions post an error notice with the jump URL to mod-log and punish nobody; any reply that is neither OK nor a valid verdict is posted raw for a human; the logger itself can fail without escaping. openai bumped 1.10.0 -> 2.54.0 and the httpx pin dropped (H-13 closed). 91 tests, ruff clean.
+
+What I did not check: whether gpt-4o-mini reliably answers the bare OK sentinel in production (if not, mod-log gets noisy — visible, not silent); any live OpenAI call at all (openai 2.x was verified only by constructing AsyncOpenAI and by the chat.completions call signature the fake records); token cost per message; the behavior of temperature=0 and max_tokens=60 on the real model.
+
 ## Accumulated Lessons
 
 _(Numbered sequentially across the whole gameplan. Categorized. Pruned of
@@ -76,3 +82,7 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 **2.** Flat-layout Python repos (modules at the root) need pythonpath=['.'] in [tool.pytest.ini_options] or test modules cannot import them; and any test that importlib.reload()s a module must catch a base exception class, because reload mints new class objects that no longer match the names imported before the reload. *(evidence: Phase 0: ModuleNotFoundError on import config, then two reload tests failing on class identity)* (obsolete 2026-09-06: superseded by lesson #3: the fix is to never reload a shared module in tests, not to widen the except clause)
 
 **3.** Never importlib.reload() a shared module in a test: it mints new class objects, so exceptions raised later no longer match the classes other test files imported (failures appear in unrelated files that run afterwards). To test import-time behavior, exec config.py into a fresh module object via importlib.util.spec_from_file_location under a different name and leave sys.modules alone. Flat-layout repos still need pythonpath=['.'] in pytest config. *(evidence: Phase 1: test_config_ids failed only because test_config reloaded config first)*
+
+### Category: Design
+
+**5.** An LLM-as-classifier protocol needs an explicit positive sentinel for the negative class (here: reply exactly OK). Without it, 'no verdict' and 'garbage reply' are indistinguishable, forcing a choice between failing open and flooding humans; with it, the fail-closed path is precise and prompt drift becomes visible noise instead of silent non-enforcement. *(evidence: Phase 3 D8; the original code treated every non-VIOLATION reply as clean and echoed it to the channel)*

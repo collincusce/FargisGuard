@@ -110,6 +110,13 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 **Consequences**: The key stays recoverable from history until the owner scrubs; rotation at AWS is what actually closes the exposure.
 **Status**: active (2026-09-06)
 
+### D8 — The classifier's clean reply is the exact sentinel OK; anything else that is not a valid verdict goes to a human
+
+**Context**: With the strict parser (D1), a None verdict could mean 'clean', 'chatty model', or 'malformed VIOLATION line'. Treating all three as clean would fail open; posting all of them would flood mod-log.
+**Decision**: SYSTEM_PROMPT demands exactly OK for a clean message. pipeline.handle_message treats reply == 'OK' as clean and silent; any other reply that parse_verdict rejects is posted to mod-log with the raw text as 'unparseable' and no action is taken.
+**Consequences**: A model that stops honoring the sentinel shows up immediately as mod-log noise rather than as silently unmoderated messages — the intended failure direction (INVARIANT-03). Prompt tuning, not code, is the knob if volume is high.
+**Status**: active (2026-09-06)
+
 ## Open Items
 
 **O-01.** _(phase 0)_ Rotate the EC2 keypair: create a new keypair, add its public key to ~/.ssh/authorized_keys on the instance, verify login, remove the old public key, delete the old keypair in the EC2 console. Cannot be done from the repo — owner action. (H-01)
@@ -194,11 +201,11 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 3.4 | `tests/test_ai_engine.py`, `tests/test_pipeline.py` with a `FakeClient` | M |
 
 **Exit criteria**:
-- [ ] ai_engine uses AsyncOpenAI, awaited, with a request timeout; the client is injectable and no test constructs a real one
-- [ ] build_messages puts rules and content inside delimited tags in the user turn and the system prompt contains no guild-supplied text
-- [ ] empty or whitespace-only messages never reach the analyzer (test)
-- [ ] when the analyzer raises, handle_message posts to mod-log and punishes nobody (test); when the verdict is None it posts the raw reply to mod-log
-- [ ] handle_message is driven end-to-end in tests with fake message, analyzer, punisher, and logger
+- [x] ai_engine uses AsyncOpenAI, awaited, with a request timeout; the client is injectable and no test constructs a real one
+- [x] build_messages puts rules and content inside delimited tags in the user turn and the system prompt contains no guild-supplied text
+- [x] empty or whitespace-only messages never reach the analyzer (test)
+- [x] when the analyzer raises, handle_message posts to mod-log and punishes nobody (test); when the verdict is None it posts the raw reply to mod-log
+- [x] handle_message is driven end-to-end in tests with fake message, analyzer, punisher, and logger
 
 ### Phase 4: Human-in-the-loop for high severity and warning escalation
 

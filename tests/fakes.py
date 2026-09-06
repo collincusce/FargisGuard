@@ -89,8 +89,31 @@ class FakeMessage:
     channel: FakeChannel = field(default_factory=FakeChannel)
     deleted: bool = False
     delete_forbidden: bool = False
+    jump_url: str = "https://discord.com/channels/1001/500/9000"
 
     async def delete(self) -> None:
         if self.delete_forbidden:
             raise forbidden("Missing Permissions")
         self.deleted = True
+
+
+class FakeCompletions:
+    """Stands in for client.chat.completions; records every create() call."""
+
+    def __init__(self, reply: str = "OK", error: Exception | None = None):
+        self.reply = reply
+        self.error = error
+        self.calls: list[dict] = []
+
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        message = SimpleNamespace(content=self.reply)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+class FakeOpenAI:
+    def __init__(self, reply: str = "OK", error: Exception | None = None):
+        self.completions = FakeCompletions(reply, error)
+        self.chat = SimpleNamespace(completions=self.completions)

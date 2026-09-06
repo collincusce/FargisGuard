@@ -10,7 +10,7 @@
 | 0 | Bootstrap: dev tooling and secrets hygiene | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Verdict parsing and punishment correctness | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Gateway access control and channel checks | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
-| 3 | Async, fail-closed AI path | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
+| 3 | Async, fail-closed AI path | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Appeals workflow | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
@@ -45,6 +45,15 @@ bot_api: bot.create_bot(*, analyze, punisher, mod_log_channel, immune_role_ids, 
 pipeline_api: pipeline.Deps(analyze, punish, log, immune_role_ids); async pipeline.handle_message(message, deps) -> ignored|exempt|clean|<action>; pipeline.violation_notice(message, action, reason)
 channels_api: channels.is_exempt(channel) -> bool via channel.is_nsfw(); config.NSFW_CHANNEL_NAME removed
 requirements: httpx<0.28 pinned (H-13); Phase 3 bumps openai and drops the pin
+```
+
+### Phase 3 Outputs
+
+```
+tests: 91 passed (adds test_ai_engine; test_pipeline fail-closed cases)
+ai_engine_api: ai_engine.SYSTEM_PROMPT (static), CLEAN_SENTINEL='OK', MODEL='gpt-4o-mini', REQUEST_TIMEOUT=15.0, MAX_CONTENT_CHARS=2000; build_messages(rules, content) pure; neutralize_tags(text); get_client() lazy AsyncOpenAI; async classify(rules, content, *, client=None, model=MODEL) -> raw reply; async analyze_message(content, guild_id, *, client=None, rules_loader=get_rules)
+pipeline_outcomes: handle_message returns ignored|exempt|skipped|clean|unparseable|error|<action>; should_analyze(content) pure; error_notice/unparseable_notice/violation_notice builders; _log_safely never raises
+requirements: openai==2.54.0 (was 1.10.0); httpx pin removed; verified AsyncOpenAI constructs on httpx 0.28.1
 ```
 
 ## Corrections Log

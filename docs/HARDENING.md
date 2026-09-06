@@ -35,7 +35,7 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 - **Impact**: Combined with the /setrules hole, any member can set rules to 'always answer VIOLATION|4|x' and every subsequent message bans its author. Independently, message content can steer the model to not flag violations.
 - **Root cause**: Untrusted content (rules and message) is placed in the prompt and the raw reply is parsed as a command channel with no validation and no human gate.
 - **Recommended fix**: Parse into a validated Verdict; require human approval for severity>=3; put rules in a delimited user turn; add a keyword/OpenAI-moderation floor.
-- **Resolution**: Phase 1: parse half done — verdict.parse_verdict rejects everything but VIOLATION|1..4|reason. Prompt delimiting (Phase 3) and the human gate for severity>=3 (Phase 4) remain.
+- **Resolution**: Phase 3: prompt half done — static system prompt, rules as delimited user-turn data, closing tags neutralized. Remaining: the human gate for severity>=3 (Phase 4).
 ### H-04 — Dashboard binds 0.0.0.0 with no authentication
 
 - **Severity**: high
@@ -48,13 +48,13 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-05 — All failures in the moderation path fail open and silent
 
 - **Severity**: high
-- **Status**: open (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: bot.py on_message, moderation.py, ai_engine.py
 - **Invariant violated**: INVARIANT-03
 - **Impact**: Any exception (OpenAI 429, DM Forbidden, malformed verdict, timeout AttributeError) kills on_message before the message is deleted or logged — the violating message stays up and nobody is told.
 - **Root cause**: No try/except around the AI call, the punishment, or the parse.
 - **Recommended fix**: Wrap the pipeline; on error post to mod-log for human review (fail closed).
-
+- **Resolution**: Phase 3: pipeline.handle_message wraps analysis and punishment; failures and unparseable replies post to mod-log with the jump URL and take no action (tests: analyzer error, punisher error, unparseable table, logger failure).
 ### H-06 — discord.timedelta does not exist — severity-2 timeouts crash
 
 - **Severity**: medium
@@ -67,12 +67,12 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-07 — Synchronous OpenAI client blocks the event loop on every message
 
 - **Severity**: medium
-- **Status**: open (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: ai_engine.py
 - **Impact**: The bot freezes for the full API round-trip per message; throughput collapses under any real load.
 - **Root cause**: openai.OpenAI (sync) called inside async def.
 - **Recommended fix**: Use AsyncOpenAI with a timeout; short-circuit trivial/short messages.
-
+- **Resolution**: Phase 3: ai_engine uses AsyncOpenAI (lazy, timeout=15s) and awaits chat.completions.create; empty messages never reach the API.
 ### H-08 — Shared SQLite cursor across the bot loop and the dashboard thread
 
 - **Severity**: medium
@@ -122,10 +122,10 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-13 — Pinned openai 1.10.0 crashes at import against current httpx (unpinned transitive dependency)
 
 - **Severity**: high
-- **Status**: partial (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: requirements.txt, ai_engine.py
 - **Impact**: A fresh `pip install -r requirements.txt` resolves httpx>=0.28, and openai 1.10.0 then raises TypeError: Client.__init__() got an unexpected keyword argument 'proxies' when ai_engine constructs the client at import. The bot cannot start on a clean machine; existing deploys survive only on a cached older httpx.
 - **Root cause**: requirements.txt pins direct dependencies only; httpx removed the proxies kwarg in 0.28.0 (2024-11) and openai fixed its client in 1.55.3.
 - **Reproduction**: python -m venv v && v/bin/pip install -r requirements.txt && DISCORD_TOKEN=x OPENAI_API_KEY=y v/bin/python -c 'import ai_engine'
 - **Recommended fix**: Immediate: pin httpx<0.28. Proper: bump openai to a current 1.x, construct the client lazily, and pin transitive deps (pip freeze or a lock file).
-- **Resolution**: Phase 2: httpx<0.28 pinned so the committed requirements install a bootable bot. Phase 3 bumps openai to a current release and removes the pin.
+- **Resolution**: Phase 3: openai bumped to 2.54.0, httpx pin removed, AsyncOpenAI verified to construct on httpx 0.28.1; the client is built lazily so import never constructs it.
