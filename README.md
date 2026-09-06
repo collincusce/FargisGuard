@@ -8,7 +8,7 @@ violations are handled immediately and reversibly, and high-severity ones are
 ## How moderation works
 
 ```
-message ──▶ exempt? (channel flagged NSFW) ──▶ classifier (gpt-4o-mini)
+message ──▶ resolve scope (guild/category/channel/thread) ──▶ classifier (gpt-4o-mini)
                                                     │
                        reply "OK" ◀─────────────────┤──▶ VIOLATION|sev|reason
                        (silent)                     │         │
@@ -32,8 +32,10 @@ message ──▶ exempt? (channel flagged NSFW) ──▶ classifier (gpt-4o-mi
   `deny`.
 - **Fail closed.** If OpenAI or Discord errors mid-pipeline, the message and the
   error go to `#mod-logs`. No silent pass-through.
-- **NSFW isolation.** Channels Discord marks NSFW are skipped entirely and rely
-  on human moderation. A channel merely *named* `nsfw` is not exempt.
+- **Scoped rules with a floor.** Rules can differ per category, channel, and
+  thread; a channel Discord marks NSFW is classified against *its* rules like
+  any other. A short operator-owned safety floor (`ai_engine.SAFETY_FLOOR`)
+  applies everywhere and cannot be relaxed by any rule text.
 - **Immunity.** Administrators, anyone with *Manage Messages*, and the role IDs
   in `IMMUNE_ROLE_IDS` are never auto-moderated.
 

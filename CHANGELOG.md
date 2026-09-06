@@ -3,6 +3,17 @@
 Milestone-level history. Details live in `docs/HARDENING.md` (findings) and
 `docs/gameplans/` (the work).
 
+## Unreleased — Scoped moderation rules gameplan
+
+- Rules can be authored per guild, category, channel, and thread (rules.py);
+  legacy guild rules are migrated in place and mirrored for one release.
+- Scope resolution runs inside the fail-closed boundary; a thread whose parent
+  is gone is a mod-log error, never a silent guild-scope fallback (D-010).
+- **Behaviour change:** NSFW-flagged channels are classified against their own
+  rules instead of being skipped (D-007). A code-owned safety floor
+  (`ai_engine.SAFETY_FLOOR`) applies in every channel and no rule text can
+  relax it (D-008).
+
 ## 0.2.0 — 2026-09-06 — Hardening gameplan
 
 The prototype's README promised human-supervised moderation, escalation, and

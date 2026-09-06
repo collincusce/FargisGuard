@@ -10,7 +10,7 @@
 | 0 | Bootstrap | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Scoped rules schema | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
-| 3 | Safety floor and NSFW supersession | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
+| 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
@@ -37,6 +37,13 @@ migration_script: database.SCRIPTS entry "2026-09-06-backfill-scoped-rules" — 
 ```
 test_count_after_phase_2: 176 passed (163 + 8 resolver tests in test_channels.py + 5 pipeline boundary tests); ruff clean
 analyzer_contract: Deps.analyze is now `async (content, guild_id, *, scope: channels.ScopeChain) -> str`; pipeline passes scope on every call; ai_engine.analyze_message accepts scope=None and ignores it until Phase 6. ScopeChain(guild_id, category_id|None, channel_id, in_thread) — channel_id is the PARENT for threads.
+```
+
+### Phase 3 Outputs
+
+```
+test_count_after_phase_3: 184 passed (176 + 8 floor tests); ruff clean
+floor_location: ai_engine.SAFETY_FLOOR (code constant: CSAM, animal cruelty, credible violent threats → always severity 4); rendered by render_floor() as <floor>…</floor> inside the STATIC system turn after CLASSIFIER_INSTRUCTIONS; SYSTEM_PROMPT = instructions + floor region. User turn is <rules> + <message>, tags neutralized so </floor> cannot be forged. pipeline no longer returns "exempt"; channels.is_exempt kept but unused (drop with legacy rules table).
 ```
 
 ## Corrections Log

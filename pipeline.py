@@ -15,7 +15,7 @@ from dataclasses import dataclass
 import discord
 
 from ai_engine import CLEAN_SENTINEL
-from channels import ScopeChain, is_exempt, resolve_scope
+from channels import ScopeChain, resolve_scope
 from verdict import parse_verdict
 
 # analyze(content, guild_id, *, scope: ScopeChain) -> raw classifier reply
@@ -87,8 +87,10 @@ async def handle_message(message: discord.Message, deps: Deps) -> str:
     """Run one message through the pipeline and return what happened.
 
     Return values: ``ignored`` (bot or DM), ``skipped`` (nothing to analyze),
-    ``exempt`` (NSFW channel), ``clean``, ``unparseable`` (posted for a human),
-    ``error`` (posted for a human), or the action ``punish`` returned.
+    ``clean``, ``unparseable`` (posted for a human), ``error`` (posted for a
+    human), or the action ``punish`` returned. NSFW-flagged channels are not
+    exempt (D-007); their scope rules say what they allow, the floor says what
+    nothing allows.
     """
     if message.author.bot or message.guild is None:
         return "ignored"
@@ -98,8 +100,6 @@ async def handle_message(message: discord.Message, deps: Deps) -> str:
     # Reading the channel is a Discord-object access and can raise (a thread whose
     # parent left the cache, for one), so it lives inside the fail-closed boundary.
     try:
-        if is_exempt(message.channel):
-            return "exempt"
         scope: ScopeChain = resolve_scope(message)
     except Exception as exc:  # noqa: BLE001 — D-010: never fall back to guild scope silently
         await _log_safely(deps, message.guild, error_notice(message, "scope resolution", exc))

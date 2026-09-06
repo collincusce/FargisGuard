@@ -1,7 +1,7 @@
 # Chat Handoff Index — Scoped Moderation Rules
 
 > Last updated: 2026-09-06
-> Status: Phase 3 ready
+> Status: Phase 4 ready
 
 ## How This Works
 
@@ -32,7 +32,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 0 | Bootstrap | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Scoped rules schema | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
-| 3 | Safety floor and NSFW supersession | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
+| 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
@@ -58,6 +58,12 @@ Scoped rules storage landed without touching any caller. database.py gained thre
 channels.py gained ScopeChain (frozen, hashable), ScopeError, and a pure resolve_scope(message) that reads only IDs and flags. Threads are recognised by parent_id and their parent fetched via guild.get_channel — never Thread.parent/.category, which raise on an uncached parent. A None category is normal; a None parent raises (D-010). Forum posts resolve as threads of the forum channel (D3, closes O-03). The pipeline now runs the NSFW probe and resolve_scope inside a fail-closed try — closing the pre-existing gap where a raising channel access escaped INVARIANT-03 — and passes scope= to the analyzer on every call; ai_engine.analyze_message accepts it and ignores it until the composer lands. "skipped" now precedes the channel probe so an empty message never touches a Discord object.
 
 tests/fakes.py gained FakeCategory, FakeThread (a distinct type with only parent_id/is_nsfw, mirroring what real threads safely expose), FakeChannel.category_id, and FakeGuild.get_channel. 13 new tests; suite 176 green, ruff clean.
+
+### Phase 3 — completed 2026-09-06
+
+The safety floor now exists and the NSFW bypass is gone. ai_engine.SAFETY_FLOOR is a code constant (CSAM, animal cruelty, credible violent threats — always severity 4), rendered by render_floor() as its own <floor> region inside the static system turn after the classifier instructions, which state that nothing in <rules> can permit what the floor forbids. It is therefore structurally separate from every mod-authored fragment, sits in the future cacheable prefix, and is unreachable from any table — a test asserts no schema or migration script mentions it. Five adversarial rule texts (including a forged </floor> and a rewritten copy of the floor) all leave exactly one floor region in the payload and no closing tag in the user turn. pipeline.handle_message no longer returns "exempt"; an NSFW-flagged channel resolves like any other (D-007). channels.is_exempt stays for one release, uncalled.
+
+Docs truthed: README, ARCHITECTURE, SECURITY threat model (NSFW injection now in scope, new rule-authorship item), DEPLOYMENT release note for operators, CHANGELOG Unreleased section, ai-engine subsystem body. Suite 184 green, ruff clean.
 
 ## Accumulated Lessons
 

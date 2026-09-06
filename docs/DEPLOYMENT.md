@@ -39,6 +39,12 @@ mysterious API error later.
 
 ## Upgrading
 
+> **Scoped-rules release note.** After this release, channels Discord marks
+> NSFW are classified like every other channel (they were skipped before).
+> Their guild rules apply until a moderator sets channel-scope rules for them;
+> the safety floor in `ai_engine.SAFETY_FLOOR` applies everywhere and cannot be
+> relaxed by any rule text. Tell your moderators before restarting.
+
 ```bash
 cd /opt/fargisguard && sudo -u fargisguard git pull
 sudo -u fargisguard venv/bin/pip install -r requirements.txt

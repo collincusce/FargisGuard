@@ -165,13 +165,13 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 3.4 | docs/SECURITY.md threat-model update; DEPLOYMENT.md release note that NSFW channels are now classified | 1h |
 
 **Exit criteria**:
-- [ ] SAFETY_FLOOR text is defined in code or operator config and is not readable from or writable to any database table
-- [ ] build_messages renders the floor in its own tagged region distinct from <rules>, and SYSTEM_PROMPT states the floor overrides any rule text
-- [ ] A test asserts that for arbitrary scope text at every scope (including text that says to ignore the floor) the floor region is byte-for-byte present in the payload
-- [ ] channels.is_exempt is no longer called by pipeline.handle_message; the exempt return value is removed and its tests updated
-- [ ] docs/SECURITY.md threat model records that NSFW channels are now classified and injection there is in scope
-- [ ] docs/DEPLOYMENT.md release note tells operators that NSFW channels will be classified after this release
-- [ ] Full suite green
+- [x] SAFETY_FLOOR text is defined in code or operator config and is not readable from or writable to any database table
+- [x] build_messages renders the floor in its own tagged region distinct from <rules>, and SYSTEM_PROMPT states the floor overrides any rule text
+- [x] A test asserts that for arbitrary scope text at every scope (including text that says to ignore the floor) the floor region is byte-for-byte present in the payload
+- [x] channels.is_exempt is no longer called by pipeline.handle_message; the exempt return value is removed and its tests updated
+- [x] docs/SECURITY.md threat model records that NSFW channels are now classified and injection there is in scope
+- [x] docs/DEPLOYMENT.md release note tells operators that NSFW channels will be classified after this release
+- [x] Full suite green
 
 ### Phase 4: Composer and resolved-ruleset key
 

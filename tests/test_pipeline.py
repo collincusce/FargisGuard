@@ -55,10 +55,11 @@ async def test_dms_are_ignored(rec):
     assert rec.analyzed == []
 
 
-async def test_nsfw_flagged_channel_skips_analysis(rec):
-    msg = FakeMessage(channel=FakeChannel(name="art", nsfw=True))
-    assert await handle_message(msg, rec.deps()) == "exempt"
-    assert rec.analyzed == []
+async def test_nsfw_flagged_channel_is_analyzed_against_its_scope(rec):
+    # D-007: the flag no longer bypasses the classifier; the floor still applies there.
+    msg = FakeMessage(channel=FakeChannel(name="art", nsfw=True, id=66))
+    assert await handle_message(msg, rec.deps()) == "clean"
+    assert len(rec.analyzed) == 1 and rec.scopes[0].channel_id == 66
 
 
 async def test_channel_merely_named_nsfw_is_analyzed(rec):
@@ -196,8 +197,13 @@ async def test_thread_with_a_vanished_parent_fails_closed(rec):
 
 async def test_raising_channel_probe_fails_closed_instead_of_escaping(rec):
     class ExplodingChannel(FakeChannel):
-        def is_nsfw(self) -> bool:
+        @property
+        def category_id(self):
             raise RuntimeError("Parent channel not found")
+
+        @category_id.setter
+        def category_id(self, _):
+            pass
 
     msg = FakeMessage(content="hi", channel=ExplodingChannel())
     assert await handle_message(msg, rec.deps()) == "error"
@@ -206,8 +212,13 @@ async def test_raising_channel_probe_fails_closed_instead_of_escaping(rec):
 
 async def test_empty_message_is_skipped_before_any_channel_access(rec):
     class ExplodingChannel(FakeChannel):
-        def is_nsfw(self) -> bool:
+        @property
+        def category_id(self):
             raise RuntimeError("should not be reached")
+
+        @category_id.setter
+        def category_id(self, _):
+            pass
 
     msg = FakeMessage(content="  ", channel=ExplodingChannel())
     assert await handle_message(msg, rec.deps()) == "skipped"

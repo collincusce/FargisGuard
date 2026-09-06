@@ -7,7 +7,7 @@ their dependency edges are tracked under `docs/subsystems/` and
 
 ```
 Discord gateway ─▶ bot-gateway (bot.py) ─▶ pipeline (pipeline.py)
-                        │                    ├─ channels.is_exempt
+                        │                    ├─ channels.resolve_scope
                         │                    ├─ ai-engine (ai_engine.py) ─▶ OpenAI
                         │                    │      └─ rules (rules.py) ─▶ database
                         │                    ├─ verdict.parse_verdict
@@ -29,15 +29,18 @@ carry `app_commands` permission checks *and* default permissions.
 
 ### pipeline
 `pipeline.py`. The per-message flow with every side effect injected through
-`Deps(analyze, punish, log, immune_role_ids)`: skip bots/DMs → skip NSFW
-channels → skip empty content → classify → `OK` is clean → parse verdict →
-punish → delete → log. Analyzer/punisher errors and unparseable replies are
-posted to mod-log and take no action (INVARIANT-03).
+`Deps(analyze, punish, log, immune_role_ids)`: skip bots/DMs → skip empty
+content → resolve scope (inside the fail-closed boundary) → classify → `OK` is
+clean → parse verdict → punish → delete → log. Scope-resolution, analyzer, and
+punisher errors and unparseable replies are posted to mod-log and take no
+action (INVARIANT-03). NSFW-flagged channels are no longer bypassed (D-007).
 
 ### ai-engine
-`ai_engine.py`. Lazy `AsyncOpenAI` (15 s timeout). Static system prompt; the
-guild's rules and the message are `<rules>`/`<message>` data in the user turn
-with closing tags neutralized. Reply is either `OK` or a verdict line.
+`ai_engine.py`. Lazy `AsyncOpenAI` (15 s timeout). Static system prompt made
+of the classifier instructions plus the operator-owned `<floor>` region
+(`SAFETY_FLOOR`, D-008); the guild's rules and the message are
+`<rules>`/`<message>` data in the user turn with closing tags neutralized.
+Reply is either `OK` or a verdict line.
 
 ### verdict
 `verdict.py`. `parse_verdict(text) -> Verdict | None` — exact
