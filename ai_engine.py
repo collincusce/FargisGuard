@@ -74,7 +74,11 @@ async def classify(rules: str, content: str, *, client=None, model: str = MODEL)
 
 
 async def analyze_message(
-    content: str, guild_id: int, *, client=None, rules_loader=get_rules
+    content: str, guild_id: int, *, scope=None, client=None, rules_loader=get_rules
 ) -> str:
-    """Classify ``content`` against ``guild_id``'s rules."""
+    """Classify ``content`` against ``guild_id``'s rules.
+
+    ``scope`` (a ``channels.ScopeChain``) is accepted from the pipeline now and
+    consumed once the composer lands; until then the guild text is used.
+    """
     return await classify(rules_loader(guild_id), content, client=client)

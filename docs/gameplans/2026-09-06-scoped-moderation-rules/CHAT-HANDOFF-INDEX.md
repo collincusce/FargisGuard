@@ -1,7 +1,7 @@
 # Chat Handoff Index — Scoped Moderation Rules
 
 > Last updated: 2026-09-06
-> Status: Phase 2 ready
+> Status: Phase 3 ready
 
 ## How This Works
 
@@ -31,7 +31,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 |-------|------|--------|---------|-----------|---------|
 | 0 | Bootstrap | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Scoped rules schema | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
-| 2 | Scope resolver | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
+| 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Safety floor and NSFW supersession | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
@@ -52,6 +52,12 @@ O-01 (the live deployment reporting 0 OpenAI requests over 30 days) is deferred,
 Scoped rules storage landed without touching any caller. database.py gained three tables (scoped_rules keyed on guild/kind/id, rules_version, schema_migrations) and a third migration layer — SCRIPTS, one-shot statements recorded by name so each runs once per file — whose first entry backfills every legacy rules row as a guild-scope row with INSERT OR IGNORE. rules.py now exposes get/set/clear/list at scope plus a per-guild version counter bumped by every write (including default seeding and no-op deletes), while get_rules/set_rules keep their signatures and mirror guild-scope writes into the legacy table for one release (D2). RETURNING was deliberately avoided so the deploy target's SQLite version cannot matter.
 
 15 new tests in tests/test_rules.py cover validation, compatibility, per-guild versioning, the backfill, and that a re-run never resurrects legacy text. Suite: 163 passing, ruff clean. Cascades for database and rules resolved: every dependent verified no-change; the callers get their scope wiring in Phases 5 and 6.
+
+### Phase 2 — completed 2026-09-06
+
+channels.py gained ScopeChain (frozen, hashable), ScopeError, and a pure resolve_scope(message) that reads only IDs and flags. Threads are recognised by parent_id and their parent fetched via guild.get_channel — never Thread.parent/.category, which raise on an uncached parent. A None category is normal; a None parent raises (D-010). Forum posts resolve as threads of the forum channel (D3, closes O-03). The pipeline now runs the NSFW probe and resolve_scope inside a fail-closed try — closing the pre-existing gap where a raising channel access escaped INVARIANT-03 — and passes scope= to the analyzer on every call; ai_engine.analyze_message accepts it and ignores it until the composer lands. "skipped" now precedes the channel probe so an empty message never touches a Discord object.
+
+tests/fakes.py gained FakeCategory, FakeThread (a distinct type with only parent_id/is_nsfw, mirroring what real threads safely expose), FakeChannel.category_id, and FakeGuild.get_channel. 13 new tests; suite 176 green, ruff clean.
 
 ## Accumulated Lessons
 

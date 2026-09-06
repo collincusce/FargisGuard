@@ -9,7 +9,7 @@
 |-------|------|--------|---------|-----------|---------|
 | 0 | Bootstrap | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Scoped rules schema | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
-| 2 | Scope resolver | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
+| 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Safety floor and NSFW supersession | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Composer and resolved-ruleset key | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
@@ -30,6 +30,13 @@ o01_status: DEFERRED — operator has not yet supplied `journalctl -u fargisguar
 test_count_after_phase_1: 163 passed (148 baseline + 15 in tests/test_rules.py); ruff check clean
 rules_api: rules.py: constants GUILD/CATEGORY/CHANNEL/THREAD, GUILD_SCOPE_ID=0; validate_scope, get_scope_rules, set_scope_rules (returns new version), clear_scope_rules (bool), list_scope_rules (ordered by kind,id), get_rules_version; get_rules/set_rules unchanged signatures, guild-scope, mirror to legacy `rules` table (D2)
 migration_script: database.SCRIPTS entry "2026-09-06-backfill-scoped-rules" — INSERT OR IGNORE legacy rules rows into scoped_rules as (guild, 0); recorded in schema_migrations; thread scope_id = parent channel id; no RETURNING clause used (SQLite <3.35 safe)
+```
+
+### Phase 2 Outputs
+
+```
+test_count_after_phase_2: 176 passed (163 + 8 resolver tests in test_channels.py + 5 pipeline boundary tests); ruff clean
+analyzer_contract: Deps.analyze is now `async (content, guild_id, *, scope: channels.ScopeChain) -> str`; pipeline passes scope on every call; ai_engine.analyze_message accepts scope=None and ignores it until Phase 6. ScopeChain(guild_id, category_id|None, channel_id, in_thread) — channel_id is the PARENT for threads.
 ```
 
 ## Corrections Log

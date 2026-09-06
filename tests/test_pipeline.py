@@ -2,14 +2,16 @@ from dataclasses import dataclass, field
 
 import pytest
 
+from channels import ScopeChain
 from pipeline import Deps, describe_action, handle_message, should_analyze
-from tests.fakes import FakeChannel, FakeGuild, FakeMember, FakeMessage
+from tests.fakes import FakeChannel, FakeGuild, FakeMember, FakeMessage, FakeThread
 
 
 @dataclass
 class Recorder:
     reply: str = "OK"
     analyzed: list[tuple[str, int]] = field(default_factory=list)
+    scopes: list[ScopeChain] = field(default_factory=list)
     punished: list[tuple[int, int, str, frozenset]] = field(default_factory=list)
     logged: list[str] = field(default_factory=list)
     action: str = "warn"
@@ -17,8 +19,9 @@ class Recorder:
     punish_error: Exception | None = None
 
     def deps(self) -> Deps:
-        async def analyze(content, guild_id):
+        async def analyze(content, guild_id, *, scope):
             self.analyzed.append((content, guild_id))
+            self.scopes.append(scope)
             if self.analyze_error is not None:
                 raise self.analyze_error
             return self.reply
@@ -162,3 +165,50 @@ async def test_pending_action_notice_names_the_id_and_the_command(rec):
 
 def test_describe_action_passthrough():
     assert describe_action("timeout") == "timeout"
+
+
+# --- Phase 2 (scoped rules): scope resolution inside the fail-closed boundary ----
+
+
+async def test_resolved_scope_reaches_the_analyzer(rec):
+    guild = FakeGuild(id=7)
+    msg = FakeMessage(content="hi", guild=guild, channel=FakeChannel(id=55, category_id=9))
+    assert await handle_message(msg, rec.deps()) == "clean"
+    assert rec.scopes == [ScopeChain(guild_id=7, category_id=9, channel_id=55, in_thread=False)]
+
+
+async def test_thread_message_resolves_to_its_parent_channel(rec):
+    parent = FakeChannel(id=55, category_id=9)
+    guild = FakeGuild(id=7, channels={55: parent})
+    msg = FakeMessage(content="hi", guild=guild, channel=FakeThread(id=77, parent_id=55))
+    assert await handle_message(msg, rec.deps()) == "clean"
+    assert rec.scopes == [ScopeChain(guild_id=7, category_id=9, channel_id=55, in_thread=True)]
+
+
+async def test_thread_with_a_vanished_parent_fails_closed(rec):
+    guild = FakeGuild(id=7, channels={})
+    msg = FakeMessage(content="hi", guild=guild, channel=FakeThread(id=77, parent_id=55))
+    assert await handle_message(msg, rec.deps()) == "error"
+    assert rec.analyzed == [] and msg.deleted is False
+    assert len(rec.logged) == 1
+    assert "scope resolution failed" in rec.logged[0] and "ScopeError" in rec.logged[0]
+
+
+async def test_raising_channel_probe_fails_closed_instead_of_escaping(rec):
+    class ExplodingChannel(FakeChannel):
+        def is_nsfw(self) -> bool:
+            raise RuntimeError("Parent channel not found")
+
+    msg = FakeMessage(content="hi", channel=ExplodingChannel())
+    assert await handle_message(msg, rec.deps()) == "error"
+    assert rec.analyzed == [] and "RuntimeError" in rec.logged[0]
+
+
+async def test_empty_message_is_skipped_before_any_channel_access(rec):
+    class ExplodingChannel(FakeChannel):
+        def is_nsfw(self) -> bool:
+            raise RuntimeError("should not be reached")
+
+    msg = FakeMessage(content="  ", channel=ExplodingChannel())
+    assert await handle_message(msg, rec.deps()) == "skipped"
+    assert rec.logged == []

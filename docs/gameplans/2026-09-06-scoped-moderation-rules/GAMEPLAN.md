@@ -72,13 +72,21 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 **Evidence**: database.py:56-100, rules.py:13-30, docs/DEPLOYMENT.md:40-49, migration lens findings #1 #6
 **Status**: active (2026-09-06)
 
+### D3 — Forum posts resolve as threads of the forum channel
+
+**Context**: A post in a Discord ForumChannel arrives as a discord.Thread whose parent_id is the forum. ForumChannel carries category_id like any guild channel. Giving forums their own scope kind would add a fifth scope and a fifth authoring command for no expressive gain: "the forum's rules" and "rules for posts in the forum" are the channel and thread scopes of the forum id.
+**Decision**: resolve_scope treats a forum post exactly like a text-channel thread: channel_id = forum id, category_id = the forum's category, in_thread = True. Threads are recognised by the presence of parent_id (only discord.Thread has it in discord.py 2.3.2), and the parent is fetched by id via guild.get_channel, never via Thread.parent / Thread.category, which raise on an uncached parent.
+**Consequences**: Moderators set forum rules with the channel-scope command on the forum and per-post rules with the thread-scope command. If Discord later nests threads, parent_id resolution needs revisiting; not before.
+**Evidence**: discord.py 2.3.2 threads.py; tests/test_channels.py::test_forum_post_is_a_thread_of_the_forum_channel
+**Status**: active (2026-09-06)
+
 ## Open Items
 
 **O-01.** _(phase Bootstrap)_ Live deployment shows 0 OpenAI requests / 0 tokens over 30 days on the FargisGuard project. Token baseline measurement (Phase 0 and Phase 6) is blocked until the bot is confirmed running and its key is confirmed to belong to the project being watched. First diagnostic: `sudo journalctl -u fargisguard -n 50 --no-pager`.
 
 **O-02.** Does the safety floor need an independent classification pass that ignores all scoped rules (a stronger-than-prompt guarantee), or is a structurally separate prompt region sufficient? Doubles calls if yes. Decide in the token-architecture gameplan once batching cost is known.
 
-**O-03.** _(phase Scope resolver)_ Forum channels: a post in a ForumChannel is a Thread whose parent is the forum. Decide whether forum posts resolve as thread-scope of the forum, or whether ForumChannel gets its own scope kind. Resolver must have an explicit case either way (fail-closed decision).
+**O-03.** _(phase Scope resolver)_ Forum channels: a post in a ForumChannel is a Thread whose parent is the forum. Decide whether forum posts resolve as thread-scope of the forum, or whether ForumChannel gets its own scope kind. Resolver must have an explicit case either way (fail-closed decision). _(resolved 2026-09-06: D3: forum posts are threads of the forum channel (channel scope = forum id, in_thread=True); tested in tests/test_channels.py)_
 
 **O-04.** Delegated rule authorship (which roles may edit which scopes) is deferred to the moderator-UI gameplan. Until then every scope is Administrator-only.
 
@@ -137,12 +145,12 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 2.4 | Move the channel probe + resolver inside the pipeline's fail-closed try; regression test for a raising probe | 1h |
 
 **Exit criteria**:
-- [ ] A pure resolve_scope(message) exists that touches only .guild.id, .channel.id, .channel.category_id / .parent_id and never a name attribute
-- [ ] Tests cover: plain channel with category, channel with no category, thread of a text channel, thread whose parent lookup returns None (raises), Thread.category raising ClientException (raises), DM (never reached)
-- [ ] tests/fakes.py provides FakeCategory and FakeThread; FakeChannel gains category_id defaulting to None
-- [ ] pipeline.handle_message performs the channel probe and scope resolution inside the fail-closed try; a test proves a raising probe posts error_notice instead of escaping
-- [ ] O-03 (forum posts) is resolved with a recorded decision and a test
-- [ ] Full suite green
+- [x] A pure resolve_scope(message) exists that touches only .guild.id, .channel.id, .channel.category_id / .parent_id and never a name attribute
+- [x] Tests cover: plain channel with category, channel with no category, thread of a text channel, thread whose parent lookup returns None (raises), Thread.category raising ClientException (raises), DM (never reached)
+- [x] tests/fakes.py provides FakeCategory and FakeThread; FakeChannel gains category_id defaulting to None
+- [x] pipeline.handle_message performs the channel probe and scope resolution inside the fail-closed try; a test proves a raising probe posts error_notice instead of escaping
+- [x] O-03 (forum posts) is resolved with a recorded decision and a test
+- [x] Full suite green
 
 ### Phase 3: Safety floor and NSFW supersession
 
