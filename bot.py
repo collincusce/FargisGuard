@@ -1,75 +1,97 @@
-import asyncio
+"""Discord gateway: bot factory, slash commands, and the on_message entry point.
+
+Importing this module never connects; ``main()`` does (D5).
+"""
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
-import dashboard
+import config
 from ai_engine import analyze_message
 from appeals import submit_appeal
-from config import DISCORD_TOKEN, IMMUNE_ROLE_IDS, MOD_LOG_CHANNEL, NSFW_CHANNEL_NAME
 from moderation import punish
+from pipeline import Deps, handle_message
 from rules import set_rules
-from verdict import parse_verdict
 
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
 
-@bot.event
-async def on_ready():
-    print(f"🤖 Guardian online as {bot.user}")
-    asyncio.create_task(asyncio.to_thread(dashboard.run))
+def make_intents() -> discord.Intents:
+    """Only what moderation needs; presences and the rest stay off."""
+    return discord.Intents(guilds=True, members=True, messages=True, message_content=True)
 
-@bot.event
-async def on_message(message: discord.Message):
-    if message.author.bot or not message.guild:
-        return
 
-    # 🔞 NSFW CHANNEL — AI BYPASS
-    if message.channel.name == NSFW_CHANNEL_NAME:
-        await bot.process_commands(message)
-        return
+def mod_log_poster(channel_name: str):
+    async def post(guild: discord.Guild, text: str) -> None:
+        channel = discord.utils.get(guild.text_channels, name=channel_name)
+        if channel is not None:
+            await channel.send(text)
 
-    # 🧠 AI MODERATION
-    result = await analyze_message(message.content, message.guild.id)
+    return post
 
-    verdict = parse_verdict(result)
-    if verdict is not None:
-        action = await punish(
-            message.author, verdict.severity, verdict.reason, immune_role_ids=IMMUNE_ROLE_IDS
-        )
-        reason = verdict.reason
 
-        try:
-            await message.delete()
-        except discord.Forbidden:
-            pass
+class FargisGuard(commands.Bot):
+    def __init__(self, deps: Deps, *, intents: discord.Intents | None = None):
+        super().__init__(command_prefix=commands.when_mentioned, intents=intents or make_intents())
+        self.deps = deps
+        register_commands(self)
 
-        log_channel = discord.utils.get(
-            message.guild.text_channels, name=MOD_LOG_CHANNEL
-        )
+    async def setup_hook(self) -> None:
+        await self.tree.sync()
 
-        if log_channel:
-            await log_channel.send(
-                f"🚨 **Violation Detected**\n"
-                f"User: {message.author}\n"
-                f"Channel: {message.channel.mention}\n"
-                f"Action: {action}\n"
-                f"Reason: {reason}"
+    async def on_ready(self) -> None:
+        print(f"🤖 FargisGuard online as {self.user}")
+
+    async def on_message(self, message: discord.Message) -> None:
+        await handle_message(message, self.deps)
+
+
+def register_commands(bot: commands.Bot) -> None:
+    @bot.tree.command(name="appeal", description="Appeal a moderation action against you")
+    @app_commands.describe(reason="Why the action should be reconsidered")
+    async def appeal(interaction: discord.Interaction, reason: str) -> None:
+        submit_appeal(interaction.user.id, interaction.guild_id, reason)
+        await interaction.response.send_message("📨 Appeal submitted.", ephemeral=True)
+
+    @bot.tree.command(name="setrules", description="Replace this server's moderation rules")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(rules="The full rules text the moderator AI will enforce")
+    async def setrules(interaction: discord.Interaction, rules: str) -> None:
+        set_rules(interaction.guild_id, rules)
+        await interaction.response.send_message("📜 Rules updated.", ephemeral=True)
+
+    @bot.tree.error
+    async def on_command_error(
+        interaction: discord.Interaction, error: app_commands.AppCommandError
+    ) -> None:
+        if isinstance(error, app_commands.CheckFailure):
+            await interaction.response.send_message(
+                "You don't have permission to use this command.", ephemeral=True
             )
+            return
+        raise error
 
-    await bot.process_commands(message)
 
-# ───── SLASH COMMANDS ─────
+def create_bot(
+    *,
+    analyze=analyze_message,
+    punisher=punish,
+    mod_log_channel: str = config.MOD_LOG_CHANNEL,
+    immune_role_ids: frozenset[int] = config.IMMUNE_ROLE_IDS,
+    intents: discord.Intents | None = None,
+) -> FargisGuard:
+    deps = Deps(
+        analyze=analyze,
+        punish=punisher,
+        log=mod_log_poster(mod_log_channel),
+        immune_role_ids=frozenset(immune_role_ids),
+    )
+    return FargisGuard(deps, intents=intents)
 
-@bot.tree.command(name="appeal")
-async def appeal(interaction: discord.Interaction, reason: str):
-    submit_appeal(interaction.user.id, interaction.guild.id, reason)
-    await interaction.response.send_message("📨 Appeal submitted.")
 
-@bot.tree.command(name="setrules")
-@commands.has_permissions(administrator=True)
-async def setrules_cmd(interaction: discord.Interaction, rules: str):
-    set_rules(interaction.guild.id, rules)
-    await interaction.response.send_message("📜 Rules updated.")
+def main() -> None:
+    create_bot().run(config.DISCORD_TOKEN)
 
-bot.run(DISCORD_TOKEN)
+
+if __name__ == "__main__":
+    main()

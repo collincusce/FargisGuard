@@ -52,7 +52,6 @@ DISCORD_TOKEN = require_env("DISCORD_TOKEN")
 OPENAI_API_KEY = require_env("OPENAI_API_KEY")
 
 MOD_LOG_CHANNEL = optional_env("MOD_LOG_CHANNEL", "mod-logs")
-NSFW_CHANNEL_NAME = "nsfw"
 DASHBOARD_PORT = int(optional_env("DASHBOARD_PORT", "8000"))
 
 # Role IDs (not names) whose holders are never auto-moderated; administrators and

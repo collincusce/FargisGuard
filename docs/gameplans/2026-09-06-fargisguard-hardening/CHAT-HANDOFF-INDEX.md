@@ -1,7 +1,7 @@
 # Chat Handoff Index — FargisGuard Hardening
 
 > Last updated: 2026-09-06
-> Status: Phase 2 ready
+> Status: Phase 3 ready
 
 ## How This Works
 
@@ -31,7 +31,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 |-------|------|--------|---------|-----------|---------|
 | 0 | Bootstrap: dev tooling and secrets hygiene | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Verdict parsing and punishment correctness | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
-| 2 | Gateway access control and channel checks | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
+| 2 | Gateway access control and channel checks | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Async, fail-closed AI path | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Dashboard and database safety | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
@@ -54,6 +54,12 @@ The classifier's reply now goes through verdict.parse_verdict, a pure strict par
 
 What I did not check: bot.py end to end (it still runs bot.run at import; Phase 2 makes it importable and testable); how gpt-4o-mini actually formats replies in production (the strictness may route more replies to human review than expected — that is the intended failure direction); Discord's real timeout semantics beyond the call signature; kick/ban still fire automatically for severity 3-4 until Phase 4.
 
+### Phase 2 — completed 2026-09-06
+
+bot.py is now a factory (create_bot -> FargisGuard subclass of commands.Bot) with main() behind a __main__ guard, so importing it connects to nothing and tests inspect the real command tree. /setrules carries app_commands.checks.has_permissions(administrator) AND default_permissions(administrator) — the test asserts both, closing H-02. setup_hook awaits tree.sync (H-11 sync half); intents are narrowed to guilds/members/messages/message_content (messages is required to receive on_message at all). Channel exemption moved to channels.is_exempt using Discord's NSFW flag (H-10 closed). The per-message flow lives in pipeline.handle_message with all side effects injected via Deps, driven end-to-end by fakes. Making bot importable exposed H-13: openai 1.10.0 cannot construct its client against httpx>=0.28, so requirements.txt pins httpx<0.28 for now. 67 tests, ruff clean.
+
+What I did not check: the interaction-time behavior of the permission check against a live guild (only that it is registered on the command); tree.sync against Discord (global sync propagation and rate limits); whether messages=True alone delivers thread messages the way the old Intents.all() did; the EC2 host's installed httpx version.
+
 ## Accumulated Lessons
 
 _(Numbered sequentially across the whole gameplan. Categorized. Pruned of
@@ -62,6 +68,8 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 ### Category: Process
 
 **1.** A bootstrap phase on a test-less repo needs the tests pre-flight check downgraded to advisory for that one phase; restore it in the same phase's ending protocol.
+
+**4.** Pinning only direct dependencies is not reproducibility: a pinned client library can be broken by an unpinned transitive one. Verify installs in a fresh venv, and prefer a full freeze/lock for deployables.
 
 ### Category: Testing
 

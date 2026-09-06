@@ -30,13 +30,33 @@ class FakeRole:
 
 
 @dataclass
+class FakeChannel:
+    name: str = "general"
+    nsfw: bool = False
+    id: int = 500
+    sent: list[str] = field(default_factory=list)
+
+    @property
+    def mention(self) -> str:
+        return f"<#{self.id}>"
+
+    def is_nsfw(self) -> bool:
+        return self.nsfw
+
+    async def send(self, content: str) -> None:
+        self.sent.append(content)
+
+
+@dataclass
 class FakeGuild:
     id: int = 1001
+    text_channels: list[FakeChannel] = field(default_factory=list)
 
 
 @dataclass
 class FakeMember:
     id: int = 42
+    bot: bool = False
     guild: FakeGuild = field(default_factory=FakeGuild)
     roles: list[FakeRole] = field(default_factory=list)
     guild_permissions: FakePermissions = field(default_factory=FakePermissions)
@@ -59,3 +79,18 @@ class FakeMember:
 
     async def ban(self, *, reason: str | None = None) -> None:
         self.bans.append(reason)
+
+
+@dataclass
+class FakeMessage:
+    content: str = "hello"
+    author: FakeMember = field(default_factory=FakeMember)
+    guild: FakeGuild | None = field(default_factory=FakeGuild)
+    channel: FakeChannel = field(default_factory=FakeChannel)
+    deleted: bool = False
+    delete_forbidden: bool = False
+
+    async def delete(self) -> None:
+        if self.delete_forbidden:
+            raise forbidden("Missing Permissions")
+        self.deleted = True

@@ -18,14 +18,14 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-02 — /setrules slash command has no effective authorization
 
 - **Severity**: critical
-- **Status**: open (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: bot.py setrules_cmd
 - **Invariant violated**: INVARIANT-05
 - **Impact**: Any guild member can rewrite the moderation rules that are interpolated into the LLM system prompt.
 - **Root cause**: @commands.has_permissions (discord.ext.commands) is applied to an app command; verified on discord.py 2.3.2 that the check lands on __commands_checks__ which app_commands.Command never reads (checks=[], default_permissions=None).
 - **Reproduction**: Load the command object: bot.tree.get_command('setrules').checks == [].
 - **Recommended fix**: Use @app_commands.checks.has_permissions(administrator=True) plus @app_commands.default_permissions(administrator=True); add a test asserting the check is registered.
-
+- **Resolution**: Phase 2: /setrules uses @app_commands.checks.has_permissions(administrator=True) + @app_commands.default_permissions(administrator=True); test_setrules_has_a_real_app_command_permission_check asserts checks is non-empty and default_permissions.administrator is True.
 ### H-03 — Model verdict is sole authority for kick/ban and is prompt-injectable
 
 - **Severity**: high
@@ -94,22 +94,22 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 ### H-10 — NSFW exemption and moderator immunity are string-name checks
 
 - **Severity**: medium
-- **Status**: partial (2026-09-06)
+- **Status**: resolved (2026-09-06)
 - **Affected**: bot.py, moderation.py, config.py
 - **Invariant violated**: INVARIANT-05
 - **Impact**: Any channel named 'nsfw' bypasses moderation entirely; any role named 'Moderator' grants immunity.
 - **Root cause**: Comparison against channel.name / role.name strings.
 - **Recommended fix**: Use channel.is_nsfw() and permission/role-ID based immunity from config.
-- **Resolution**: Phase 1: immunity now uses administrator/manage_messages or IMMUNE_ROLE_IDS (test proves a role named Moderator is not immune). Channel-name NSFW exemption remains until Phase 2.
+- **Resolution**: Phase 2: channel exemption is channels.is_exempt(channel) via is_nsfw(); tests prove a channel named nsfw without the flag is moderated. Immunity half was resolved in Phase 1.
 ### H-11 — Slash commands are never synced; on_ready starts the dashboard on every reconnect
 
 - **Severity**: medium
-- **Status**: open (2026-09-06)
+- **Status**: partial (2026-09-06)
 - **Affected**: bot.py
 - **Impact**: /appeal and /setrules never appear in Discord; the appeals workflow is unreachable. A gateway reconnect spawns a second uvicorn on a busy port.
 - **Root cause**: No bot.tree.sync(); dashboard started from on_ready instead of setup_hook.
 - **Recommended fix**: Sync in setup_hook; start the dashboard once as an asyncio task via uvicorn.Server.
-
+- **Resolution**: Phase 2: setup_hook awaits tree.sync (tested). The dashboard is no longer started from on_ready at all; Phase 5 starts it once from setup_hook via uvicorn.Server.
 ### H-12 — README claims features the code does not implement
 
 - **Severity**: low
@@ -118,3 +118,14 @@ resolved with a date instead. This is a permanent audit trail. Numbered `H-NN`.
 - **Impact**: Warning escalation (count is written, never read), appeals workflow (write-only table, forgive() never called), and human oversight for high-risk actions do not exist; contributors and operators are misled.
 - **Root cause**: Documentation written ahead of implementation.
 - **Recommended fix**: Implement escalation and the appeal resolution path, then truth-up the README.
+
+### H-13 — Pinned openai 1.10.0 crashes at import against current httpx (unpinned transitive dependency)
+
+- **Severity**: high
+- **Status**: partial (2026-09-06)
+- **Affected**: requirements.txt, ai_engine.py
+- **Impact**: A fresh `pip install -r requirements.txt` resolves httpx>=0.28, and openai 1.10.0 then raises TypeError: Client.__init__() got an unexpected keyword argument 'proxies' when ai_engine constructs the client at import. The bot cannot start on a clean machine; existing deploys survive only on a cached older httpx.
+- **Root cause**: requirements.txt pins direct dependencies only; httpx removed the proxies kwarg in 0.28.0 (2024-11) and openai fixed its client in 1.55.3.
+- **Reproduction**: python -m venv v && v/bin/pip install -r requirements.txt && DISCORD_TOKEN=x OPENAI_API_KEY=y v/bin/python -c 'import ai_engine'
+- **Recommended fix**: Immediate: pin httpx<0.28. Proper: bump openai to a current 1.x, construct the client lazily, and pin transitive deps (pip freeze or a lock file).
+- **Resolution**: Phase 2: httpx<0.28 pinned so the committed requirements install a bootable bot. Phase 3 bumps openai to a current release and removes the pin.

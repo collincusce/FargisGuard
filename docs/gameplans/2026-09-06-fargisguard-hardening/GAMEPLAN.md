@@ -175,11 +175,11 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 2.5 | `tests/test_bot_wiring.py`: import safety, command checks, sync called, exemption table | M |
 
 **Exit criteria**:
-- [ ] python -c 'import bot' completes without connecting; create_bot() returns the configured bot
-- [ ] a test asserts bot.tree.get_command('setrules').checks is non-empty and default_permissions.administrator is True
-- [ ] setup_hook awaits tree.sync (tested with a fake tree)
-- [ ] NSFW exemption uses channel.is_nsfw(); a test shows a channel named nsfw without the flag is moderated and a flagged channel is exempt
-- [ ] no code path replies with model output; intents are narrowed to guilds, members, message_content
+- [x] python -c 'import bot' completes without connecting; create_bot() returns the configured bot
+- [x] a test asserts bot.tree.get_command('setrules').checks is non-empty and default_permissions.administrator is True
+- [x] setup_hook awaits tree.sync (tested with a fake tree)
+- [x] NSFW exemption uses channel.is_nsfw(); a test shows a channel named nsfw without the flag is moderated and a flagged channel is exempt
+- [x] no code path replies with model output; intents are narrowed to guilds, members, message_content
 
 ### Phase 3: Async, fail-closed AI path
 
