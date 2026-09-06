@@ -185,12 +185,12 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 4.3 | Determinism, shared-key, invalidation, and single-connection tests | 2h |
 
 **Exit criteria**:
-- [ ] compose_rules(chain, fragments) is pure and returns ResolvedRules(text, key) with key = sha256 of text
-- [ ] A test asserts identical inputs produce identical bytes across two calls and across fragment insertion order
-- [ ] A test asserts two channels with no channel-scope rows in the same category produce the same key
-- [ ] The in-process memo is keyed by ScopeChain and a test proves a rules write (any scope, including default seeding) invalidates it via the version counter
-- [ ] Resolution performs at most one SQLite connection per uncached ScopeChain, proven by a counting fake
-- [ ] Full suite green
+- [x] compose_rules(chain, fragments) is pure and returns ResolvedRules(text, key) with key = sha256 of text
+- [x] A test asserts identical inputs produce identical bytes across two calls and across fragment insertion order
+- [x] A test asserts two channels with no channel-scope rows in the same category produce the same key
+- [x] The in-process memo is keyed by ScopeChain and a test proves a rules write (any scope, including default seeding) invalidates it via the version counter
+- [x] Resolution performs at most one SQLite connection per uncached ScopeChain, proven by a counting fake
+- [x] Full suite green
 
 ### Phase 5: Authoring commands
 

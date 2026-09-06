@@ -11,7 +11,7 @@
 | 1 | Scoped rules schema | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
-| 4 | Composer and resolved-ruleset key | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
+| 4 | Composer and resolved-ruleset key | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
@@ -44,6 +44,13 @@ analyzer_contract: Deps.analyze is now `async (content, guild_id, *, scope: chan
 ```
 test_count_after_phase_3: 184 passed (176 + 8 floor tests); ruff clean
 floor_location: ai_engine.SAFETY_FLOOR (code constant: CSAM, animal cruelty, credible violent threats → always severity 4); rendered by render_floor() as <floor>…</floor> inside the STATIC system turn after CLASSIFIER_INSTRUCTIONS; SYSTEM_PROMPT = instructions + floor region. User turn is <rules> + <message>, tags neutralized so </floor> cannot be forged. pipeline no longer returns "exempt"; channels.is_exempt kept but unused (drop with legacy rules table).
+```
+
+### Phase 4 Outputs
+
+```
+test_count_after_phase_4: 196 passed (184 + 12 in tests/test_composer.py); ruff clean
+composer_api: composer.py: compose_rules(chain, fragments) -> ResolvedRules(text, key=sha256); scope_keys(chain); RulesResolver(snapshot=rules.snapshot, version=rules.get_rules_version).resolve(chain) memoised by (ScopeChain -> version); get_resolver() process-wide. rules.snapshot(guild_id) -> (version, fragments) in ONE connection, seeds DEFAULT_RULES on cold guild. Render labels: '## Server rules' / '## Category rules (...)' / '## Channel rules (...)' / '## Thread rules (...)'.
 ```
 
 ## Corrections Log

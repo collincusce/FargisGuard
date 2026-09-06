@@ -115,6 +115,43 @@ def list_scope_rules(guild_id: int) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def snapshot(guild_id: int) -> tuple[int, list[dict]]:
+    """One connection: the guild's version and every fragment, seeding the default.
+
+    The composer's only read. A guild seen for the first time gets ``DEFAULT_RULES``
+    as its guild scope here (the same seeding ``get_rules`` does), inside the same
+    connection, so the returned version already reflects it.
+    """
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT scope_kind, scope_id, content FROM scoped_rules WHERE guild_id=? "
+            "ORDER BY scope_kind, scope_id",
+            (guild_id,),
+        ).fetchall()
+        fragments = [dict(r) for r in rows]
+        if not any(r["scope_kind"] == GUILD for r in fragments):
+            conn.execute(
+                "INSERT INTO scoped_rules (guild_id, scope_kind, scope_id, content) "
+                "VALUES (?, ?, ?, ?)",
+                (guild_id, GUILD, GUILD_SCOPE_ID, DEFAULT_RULES),
+            )
+            conn.execute(
+                "INSERT INTO rules (guild_id, content) VALUES (?, ?) "
+                "ON CONFLICT(guild_id) DO UPDATE SET content=excluded.content",
+                (guild_id, DEFAULT_RULES),
+            )
+            fragments.append(
+                {"scope_kind": GUILD, "scope_id": GUILD_SCOPE_ID, "content": DEFAULT_RULES}
+            )
+            version = _bump_version(conn, guild_id)
+        else:
+            row = conn.execute(
+                "SELECT version FROM rules_version WHERE guild_id=?", (guild_id,)
+            ).fetchone()
+            version = int(row["version"]) if row else 0
+        return version, fragments
+
+
 def get_rules(guild_id: int) -> str:
     """The guild-scope text, seeding ``DEFAULT_RULES`` on first sight of a guild."""
     existing = get_scope_rules(guild_id, GUILD, GUILD_SCOPE_ID)

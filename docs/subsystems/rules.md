@@ -1,15 +1,18 @@
 ---
 id: subsys.rules
 type: subsystem
-version: 0.3.0
+version: 0.4.0
 status: active
 depends_on:
   - subsys.database@^0.3
+  - subsys.channels@^0.2
 last_verified: 2026-09-06
 documented_in: docs/ARCHITECTURE.md#rules
 key_files:
   - rules.py
+  - composer.py
   - tests/test_rules.py
+  - tests/test_composer.py
 ---
 
 # Rules
@@ -32,6 +35,21 @@ Keys are snowflake IDs, never names (INVARIANT-05).
 - `get_rules_version(guild_id)` — bumped by **every** write, including the
   default seeding and a delete of a missing row, so a memo keyed on it can
   never serve stale text.
+
+## Composition (`composer.py`)
+
+- `compose_rules(chain, fragments) -> ResolvedRules(text, key)` — pure and
+  byte-deterministic: applicable fragments rendered widest-first (server →
+  category → channel → thread) under fixed labels, meaningless whitespace
+  normalised, empty fragments omitted; `key` is sha256 of the text. Channels
+  that inherit identical text share a key — the future batch/cache identity.
+- `rules.snapshot(guild_id)` — the composer's one read: version + every
+  fragment in a single connection, seeding `DEFAULT_RULES` as the guild scope
+  on a cold guild inside that same connection.
+- `RulesResolver` — memo `ScopeChain → (version, ResolvedRules)`; a hit costs
+  one version probe, a miss one snapshot, a stale entry both. Any write
+  anywhere in the guild bumps the version and so invalidates every chain of
+  that guild. `get_resolver()` is the process-wide instance.
 
 ## Compatibility bridge (D2)
 

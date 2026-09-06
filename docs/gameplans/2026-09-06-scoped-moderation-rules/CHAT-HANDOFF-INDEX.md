@@ -1,7 +1,7 @@
 # Chat Handoff Index — Scoped Moderation Rules
 
 > Last updated: 2026-09-06
-> Status: Phase 4 ready
+> Status: Phase 5 ready
 
 ## How This Works
 
@@ -33,7 +33,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 1 | Scoped rules schema | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Scope resolver | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Safety floor and NSFW supersession | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-3-HANDOFF.md |
-| 4 | Composer and resolved-ruleset key | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
+| 4 | Composer and resolved-ruleset key | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Authoring commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Wire-through and measurement | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
@@ -64,6 +64,12 @@ tests/fakes.py gained FakeCategory, FakeThread (a distinct type with only parent
 The safety floor now exists and the NSFW bypass is gone. ai_engine.SAFETY_FLOOR is a code constant (CSAM, animal cruelty, credible violent threats — always severity 4), rendered by render_floor() as its own <floor> region inside the static system turn after the classifier instructions, which state that nothing in <rules> can permit what the floor forbids. It is therefore structurally separate from every mod-authored fragment, sits in the future cacheable prefix, and is unreachable from any table — a test asserts no schema or migration script mentions it. Five adversarial rule texts (including a forged </floor> and a rewritten copy of the floor) all leave exactly one floor region in the payload and no closing tag in the user turn. pipeline.handle_message no longer returns "exempt"; an NSFW-flagged channel resolves like any other (D-007). channels.is_exempt stays for one release, uncalled.
 
 Docs truthed: README, ARCHITECTURE, SECURITY threat model (NSFW injection now in scope, new rule-authorship item), DEPLOYMENT release note for operators, CHANGELOG Unreleased section, ai-engine subsystem body. Suite 184 green, ruff clean.
+
+### Phase 4 — completed 2026-09-06
+
+composer.py turns a ScopeChain plus a guild's fragments into ResolvedRules(text, key). compose_rules is pure and byte-deterministic: fragments render widest-first under fixed labels, whitespace that carries no meaning is normalised, empty fragments are omitted, and key is sha256 of the text — so two channels that inherit the same rules share a key, which is exactly what batching and caching will group on. rules.snapshot(guild_id) is the composer's one read: version plus every fragment in a single connection, seeding DEFAULT_RULES on a cold guild inside that same connection. RulesResolver memoises ScopeChain → (version, ResolvedRules); a miss costs one connection, a hit one version probe, a stale entry both, and any write anywhere in the guild (including a no-op delete or the default seeding) invalidates. 12 new tests; suite 196 green, ruff clean.
+
+Nothing consumes the resolver yet — Phase 6 wires ai_engine.analyze_message to it; Phase 5's /showrules renders the same compose_rules output so moderators see what the model sees.
 
 ## Accumulated Lessons
 
