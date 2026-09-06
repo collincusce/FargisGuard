@@ -8,7 +8,7 @@
 | Phase | Name | Status | Started | Completed | Handoff |
 |-------|------|--------|---------|-----------|---------|
 | 0 | Bootstrap: dev tooling and secrets hygiene | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
-| 1 | Verdict parsing and punishment correctness | 🟡 IN PROGRESS | 2026-09-06 | — | handoffs/PHASE-1-HANDOFF.md |
+| 1 | Verdict parsing and punishment correctness | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Gateway access control and channel checks | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Async, fail-closed AI path | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
@@ -27,6 +27,16 @@ dev_tooling: pyproject.toml ([tool.pytest.ini_options] pythonpath=['.'], asyncio
 config_api: config.ConfigError, config.require_env(name, env=None), config.optional_env(name, default, env=None); DISCORD_TOKEN and OPENAI_API_KEY validated at import
 ```
 
+### Phase 1 Outputs
+
+```
+tests: 48 passed (test_config, test_config_ids, test_verdict, test_moderation)
+verdict_api: verdict.Verdict(severity:int, reason:str) frozen; verdict.parse_verdict(text) -> Verdict | None; strict single-line VIOLATION|1..4|reason, reason may contain pipes
+moderation_api: moderation.ACTIONS={1:warn,2:timeout,3:kick,4:ban}; moderation.is_immune(member, immune_role_ids); async moderation.punish(member, severity, reason, *, immune_role_ids=()) -> warn|timeout|kick|ban|immune|none; TIMEOUT_MINUTES=15
+config_immune_role_ids: config.IMMUNE_ROLE_IDS: frozenset[int] from IMMUNE_ROLE_IDS env (config.parse_id_list); IMMUNE_ROLES removed
+test_fakes: tests/fakes.py: FakeMember (records sent/timeouts/kicks/bans, dms_closed), FakeRole, FakeGuild, FakePermissions, forbidden()
+```
+
 ## Corrections Log
 
 ### C-01 — Phase 0
@@ -36,3 +46,10 @@ config_api: config.ConfigError, config.require_env(name, env=None), config.optio
 **What was actually correct**: pytest -q exits 5 with zero tests collected, so the check fails on any repo that has no suite yet — which is exactly the state Phase 0 exists to fix.
 **Why**: The baseline was 0 tests. Downgraded `tests` to advisory via preflight_advisory in .clauderizer/config.toml for Phase 0 only; it returns to blocking once the first test exists.
 **Lesson**: A bootstrap phase on a test-less repo needs the tests pre-flight check downgraded to advisory for that one phase; restore it in the same phase's ending protocol.
+
+### C-02 — Phase 1
+
+**Phase**: 1
+**What gameplan said**: Removing the mention-echo branch (H-09) is Phase 2 work.
+**What was actually correct**: Deleted in Phase 1: once parse_verdict returned None for malformed VIOLATION lines, the else-branch would have echoed those lines to the channel when mentioned, which is worse than the original.
+**Why**: Leaving a known-worse path in place to respect phase boundaries is the wrong trade; the Phase 2 exit criterion 'no code path replies with model output' is checked off there.

@@ -155,11 +155,11 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 1.4 | `tests/fakes.py` with `FakeMember`/`FakeRole`/`FakePermissions`; `tests/test_verdict.py`, `tests/test_moderation.py` covering the exit criteria table | M |
 
 **Exit criteria**:
-- [ ] verdict.parse_verdict returns None for every malformed input in the test table (missing fields, severity 0, 5, non-integer, empty reason, non-VIOLATION prefix) and a frozen Verdict for valid ones
-- [ ] moderation uses datetime.timedelta; a test asserts member.timeout is awaited with a datetime for severity 2
-- [ ] severity-to-action is an explicit mapping with no fallthrough branch; an unknown severity takes no action
-- [ ] immunity is decided by guild permissions or IMMUNE_ROLE_IDS from config, never by role name; a test proves a role named Moderator is not immune
-- [ ] a closed-DM member (send raises Forbidden) still returns warn without raising
+- [x] verdict.parse_verdict returns None for every malformed input in the test table (missing fields, severity 0, 5, non-integer, empty reason, non-VIOLATION prefix) and a frozen Verdict for valid ones
+- [x] moderation uses datetime.timedelta; a test asserts member.timeout is awaited with a datetime for severity 2
+- [x] severity-to-action is an explicit mapping with no fallthrough branch; an unknown severity takes no action
+- [x] immunity is decided by guild permissions or IMMUNE_ROLE_IDS from config, never by role name; a test proves a role named Moderator is not immune
+- [x] a closed-DM member (send raises Forbidden) still returns warn without raising
 
 ### Phase 2: Gateway access control and channel checks
 

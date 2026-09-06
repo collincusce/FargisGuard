@@ -1,0 +1,61 @@
+"""Offline stand-ins for discord.py objects (INVARIANT-04).
+
+Each fake records the calls the code under test makes, so tests assert on
+behavior without a gateway connection.
+"""
+
+from dataclasses import dataclass, field
+from types import SimpleNamespace
+
+import discord
+
+
+def forbidden(message: str = "Missing Access") -> discord.Forbidden:
+    """A discord.Forbidden that can be raised without a real HTTP response."""
+    return discord.Forbidden(SimpleNamespace(status=403, reason="Forbidden"), message)
+
+
+@dataclass
+class FakePermissions:
+    administrator: bool = False
+    manage_messages: bool = False
+    manage_guild: bool = False
+    ban_members: bool = False
+
+
+@dataclass
+class FakeRole:
+    id: int
+    name: str = "role"
+
+
+@dataclass
+class FakeGuild:
+    id: int = 1001
+
+
+@dataclass
+class FakeMember:
+    id: int = 42
+    guild: FakeGuild = field(default_factory=FakeGuild)
+    roles: list[FakeRole] = field(default_factory=list)
+    guild_permissions: FakePermissions = field(default_factory=FakePermissions)
+    dms_closed: bool = False
+    sent: list[str] = field(default_factory=list)
+    timeouts: list[tuple[object, str | None]] = field(default_factory=list)
+    kicks: list[str | None] = field(default_factory=list)
+    bans: list[str | None] = field(default_factory=list)
+
+    async def send(self, content: str) -> None:
+        if self.dms_closed:
+            raise forbidden("Cannot send messages to this user")
+        self.sent.append(content)
+
+    async def timeout(self, until, *, reason: str | None = None) -> None:
+        self.timeouts.append((until, reason))
+
+    async def kick(self, *, reason: str | None = None) -> None:
+        self.kicks.append(reason)
+
+    async def ban(self, *, reason: str | None = None) -> None:
+        self.bans.append(reason)

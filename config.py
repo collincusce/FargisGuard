@@ -33,6 +33,19 @@ def optional_env(name: str, default: str, env: Mapping[str, str] | None = None) 
     return value or default
 
 
+def parse_id_list(raw: str, *, name: str = "value") -> frozenset[int]:
+    """Parse a comma-separated list of Discord snowflake IDs; blanks are ignored."""
+    ids: set[int] = set()
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if not token.isdigit():
+            raise ConfigError(f"{name} must be comma-separated integer IDs, got {token!r}")
+        ids.add(int(token))
+    return frozenset(ids)
+
+
 load_dotenv()
 
 DISCORD_TOKEN = require_env("DISCORD_TOKEN")
@@ -42,4 +55,6 @@ MOD_LOG_CHANNEL = optional_env("MOD_LOG_CHANNEL", "mod-logs")
 NSFW_CHANNEL_NAME = "nsfw"
 DASHBOARD_PORT = int(optional_env("DASHBOARD_PORT", "8000"))
 
-IMMUNE_ROLES = ["Admin", "Moderator"]
+# Role IDs (not names) whose holders are never auto-moderated; administrators and
+# anyone with manage_messages are immune regardless (INVARIANT-05).
+IMMUNE_ROLE_IDS = parse_id_list(optional_env("IMMUNE_ROLE_IDS", ""), name="IMMUNE_ROLE_IDS")

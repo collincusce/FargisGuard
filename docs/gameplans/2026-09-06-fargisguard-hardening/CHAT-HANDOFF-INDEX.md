@@ -1,7 +1,7 @@
 # Chat Handoff Index — FargisGuard Hardening
 
 > Last updated: 2026-09-06
-> Status: Phase 1 of 8 in progress
+> Status: Phase 2 ready
 
 ## How This Works
 
@@ -30,7 +30,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | Phase | Name | Status | Started | Completed | Handoff |
 |-------|------|--------|---------|-----------|---------|
 | 0 | Bootstrap: dev tooling and secrets hygiene | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-0-HANDOFF.md |
-| 1 | Verdict parsing and punishment correctness | 🟡 IN PROGRESS | 2026-09-06 | — | handoffs/PHASE-1-HANDOFF.md |
+| 1 | Verdict parsing and punishment correctness | ✅ COMPLETE | 2026-09-06 | 2026-09-06 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Gateway access control and channel checks | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Async, fail-closed AI path | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Human-in-the-loop for high severity and warning escalation | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
@@ -48,6 +48,12 @@ Removed FargisGuard.pem from HEAD and made secrets hygiene structural: *.pem, *.
 
 What I did not check: the EC2 host itself (its Python version, whether the old key is still in authorized_keys, whether systemd passes the env the way .env does locally); the git history, which still contains the key (O-01, O-02 are owner actions); that load_dotenv does not shadow a systemd EnvironmentFile in production.
 
+### Phase 1 — completed 2026-09-06
+
+The classifier's reply now goes through verdict.parse_verdict, a pure strict parser that returns a frozen Verdict only for an exact single-line VIOLATION|1..4|reason and None for everything else (17-row rejection table). moderation.punish uses datetime.timedelta (severity-2 timeouts had never worked), an explicit ACTIONS map with no fallthrough (unknown severity -> 'none', no warning recorded), swallows Forbidden on closed DMs, and decides immunity by administrator/manage_messages permission or IMMUNE_ROLE_IDS from config — a role merely named Moderator is proven not immune. bot.py's raw split/int parse is replaced by the parser and the mention-echo branch (H-09) is deleted a phase early. 48 tests, ruff clean.
+
+What I did not check: bot.py end to end (it still runs bot.run at import; Phase 2 makes it importable and testable); how gpt-4o-mini actually formats replies in production (the strictness may route more replies to human review than expected — that is the intended failure direction); Discord's real timeout semantics beyond the call signature; kick/ban still fire automatically for severity 3-4 until Phase 4.
+
 ## Accumulated Lessons
 
 _(Numbered sequentially across the whole gameplan. Categorized. Pruned of
@@ -59,4 +65,6 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 
 ### Category: Testing
 
-**2.** Flat-layout Python repos (modules at the root) need pythonpath=['.'] in [tool.pytest.ini_options] or test modules cannot import them; and any test that importlib.reload()s a module must catch a base exception class, because reload mints new class objects that no longer match the names imported before the reload. *(evidence: Phase 0: ModuleNotFoundError on import config, then two reload tests failing on class identity)*
+**2.** Flat-layout Python repos (modules at the root) need pythonpath=['.'] in [tool.pytest.ini_options] or test modules cannot import them; and any test that importlib.reload()s a module must catch a base exception class, because reload mints new class objects that no longer match the names imported before the reload. *(evidence: Phase 0: ModuleNotFoundError on import config, then two reload tests failing on class identity)* (obsolete 2026-09-06: superseded by lesson #3: the fix is to never reload a shared module in tests, not to widen the except clause)
+
+**3.** Never importlib.reload() a shared module in a test: it mints new class objects, so exceptions raised later no longer match the classes other test files imported (failures appear in unrelated files that run afterwards). To test import-time behavior, exec config.py into a fresh module object via importlib.util.spec_from_file_location under a different name and leave sys.modules alone. Flat-layout repos still need pythonpath=['.'] in pytest config. *(evidence: Phase 1: test_config_ids failed only because test_config reloaded config first)*

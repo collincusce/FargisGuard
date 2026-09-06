@@ -1,7 +1,7 @@
 ---
 id: subsys.moderation
 type: subsystem
-version: 0.1.0
+version: 0.2.0
 status: active
 depends_on:
   - subsys.database@^0.1

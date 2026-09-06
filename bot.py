@@ -6,9 +6,10 @@ from discord.ext import commands
 import dashboard
 from ai_engine import analyze_message
 from appeals import submit_appeal
-from config import DISCORD_TOKEN, MOD_LOG_CHANNEL, NSFW_CHANNEL_NAME
+from config import DISCORD_TOKEN, IMMUNE_ROLE_IDS, MOD_LOG_CHANNEL, NSFW_CHANNEL_NAME
 from moderation import punish
 from rules import set_rules
+from verdict import parse_verdict
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -31,9 +32,12 @@ async def on_message(message: discord.Message):
     # 🧠 AI MODERATION
     result = await analyze_message(message.content, message.guild.id)
 
-    if result.startswith("VIOLATION"):
-        _, severity, reason = result.split("|", 2)
-        action = await punish(message.author, int(severity), reason)
+    verdict = parse_verdict(result)
+    if verdict is not None:
+        action = await punish(
+            message.author, verdict.severity, verdict.reason, immune_role_ids=IMMUNE_ROLE_IDS
+        )
+        reason = verdict.reason
 
         try:
             await message.delete()
@@ -52,10 +56,6 @@ async def on_message(message: discord.Message):
                 f"Action: {action}\n"
                 f"Reason: {reason}"
             )
-
-    else:
-        if bot.user.mentioned_in(message):
-            await message.reply(result)
 
     await bot.process_commands(message)
 
