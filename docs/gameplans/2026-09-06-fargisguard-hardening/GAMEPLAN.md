@@ -1,7 +1,7 @@
 # FargisGuard Hardening Gameplan
 
 > Created: 2026-09-06
-> Status: Planning
+> Status: Executing
 <!-- Optional, advisory-only (D-072) — declare to arm the wind-down advisory:
      "> Budget: N sessions" here, and/or "**Budget**: N sessions" inside a
      "### Phase N" block. Dormant by default; nothing blocks, ever. -->
