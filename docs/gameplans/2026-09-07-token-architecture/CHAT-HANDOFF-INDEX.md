@@ -1,7 +1,7 @@
 # Chat Handoff Index — token-architecture
 
 > Last updated: 2026-09-07
-> Status: Phase 6 ready
+> Status: All 7 phases complete
 
 ## How This Works
 
@@ -35,7 +35,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Escalation re-check tier | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-5-HANDOFF.md |
-| 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
+| 6 | Release readiness | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-6-HANDOFF.md |
 
 **Status legend**: ⬜ NOT STARTED · 🟢 READY · 🟡 IN PROGRESS · ✅ COMPLETE · ⚠️ BLOCKED · 🔴 FAILED
 
@@ -72,6 +72,10 @@ Moderators can now turn batching on per guild. batchsettings.py stores interval_
 ### Phase 5 — completed 2026-09-07
 
 The Sonnet 5 re-check tier is in. ai_engine.recheck sends one message to claude-sonnet-5 through the same classify_batch path — same system turn and schema, batch of one, thinking {"type":"disabled"} so max_tokens covers only the verdict, no sampling parameters — logged as tier=recheck. pipeline.reconcile is pure: a lower second-opinion severity wins with both reasons kept; equal or higher never escalates; a clean second opinion marks the verdict DISPUTED in the reason (severity >= 3 is held for a human regardless, so nothing is silently cleared); a failed or unparseable re-check keeps the original and says why. with_recheck never raises. Both paths run it before punish for severity >= RECHECK_AT (3): the batch path with the bucket's frozen rules text, the per-message path with the scope's resolved rules; Deps.recheck=None disables the tier and create_bot wires ai_engine.recheck by default. 17 new tests; suite 321 green, ruff clean. ai-engine 0.6.0, pipeline 0.6.0, bot-gateway 1.4.0.
+
+### Phase 6 — completed 2026-09-07
+
+Release readiness. docs/DEPLOYMENT.md carries the ordered upgrade note (tell moderators about /batch and the exposure window; add ANTHROPIC_API_KEY before restarting; re-copy the unit for TimeoutStopSec=40; verify a `classify tier=` line in journalctl) and the rollback sentence; the deploy sequence now includes the env edit and daemon-reload. deploy/fargisguard.service sets TimeoutStopSec=40 (20 s flush budget + one request timeout). .env.example, README (diagram, env table, commands table, batching paragraph, stack line), ARCHITECTURE (batcher subsystem, Anthropic external service, caching note), TESTING (fakes, baseline 321), and CHANGELOG (Unreleased — Token architecture) are truthed. ext.openai-api retired with a body explaining the one-release pin; ext.anthropic-api documented. Fresh venv from requirements.txt alone: 321 passed, pip check clean, ruff clean. Post-mortem inputs recorded as estimates; the measured baseline is still absent (O-04).
 
 ## Accumulated Lessons
 

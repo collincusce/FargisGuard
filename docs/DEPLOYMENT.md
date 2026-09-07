@@ -25,7 +25,7 @@ sudo install -d -o fargisguard -g fargisguard /opt/fargisguard/data
 sudo install -d -m 0750 -o root -g fargisguard /etc/fargisguard
 sudo cp /opt/fargisguard/.env.example /etc/fargisguard/env
 sudo chmod 0640 /etc/fargisguard/env && sudo chown root:fargisguard /etc/fargisguard/env
-sudoedit /etc/fargisguard/env     # set DISCORD_TOKEN, OPENAI_API_KEY, DB_PATH, DASHBOARD_TOKEN (LOG_LEVEL=DEBUG to log per-call token usage)
+sudoedit /etc/fargisguard/env     # set DISCORD_TOKEN, ANTHROPIC_API_KEY, DB_PATH, DASHBOARD_TOKEN (LOG_LEVEL=DEBUG logs per-request token usage)
 
 sudo cp /opt/fargisguard/deploy/fargisguard.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -39,6 +39,27 @@ mysterious API error later.
 
 ## Upgrading
 
+> **Token-architecture release note (do these in order).**
+> 1. **Tell your moderators** that they can turn on batching with
+>    `/batch set <seconds>`; while it is on, a message — including a severe
+>    one — stays visible until its batch is checked (at most 300 s, or 25
+>    messages). Batching is **off** for every server until a moderator opts in.
+> 2. **Before restarting**, add `ANTHROPIC_API_KEY=sk-ant-...` to
+>    `/etc/fargisguard/env`. The classifier moved from OpenAI to Anthropic
+>    (Haiku 4.5, with a Sonnet 5 second opinion before any kick/ban hold).
+>    A file that still has only `OPENAI_API_KEY` starts the service with a
+>    WARNING in `journalctl` and every message fails closed to `#mod-logs`
+>    until the key is added; a file with neither key refuses to start.
+>    `OPENAI_API_KEY` can be removed once the new key is in place.
+> 3. `deploy/fargisguard.service` now sets `TimeoutStopSec=40` so a stop can
+>    drain queued batches (20 s budget + one request timeout). Re-copy the
+>    unit and `systemctl daemon-reload` before the restart.
+> 4. After the restart, with `LOG_LEVEL=DEBUG`, confirm one real
+>    classification in `journalctl`: a line
+>    `classify tier=batch ruleset=… batch=1 stop=end_turn input_tokens=N …`
+>    with numeric token fields. That is the first live proof the migration
+>    works (nothing in this release was exercised against the live API).
+
 > **Scoped-rules release note.** After this release, channels Discord marks
 > NSFW are classified like every other channel (they were skipped before).
 > Their guild rules apply until a moderator sets channel-scope rules for them;
@@ -47,10 +68,17 @@ mysterious API error later.
 
 ```bash
 cd /opt/fargisguard && sudo -u fargisguard git pull
+sudoedit /etc/fargisguard/env                                  # add ANTHROPIC_API_KEY (token-architecture release)
+sudo cp deploy/fargisguard.service /etc/systemd/system/ && sudo systemctl daemon-reload
 sudo -u fargisguard venv/bin/pip install -r requirements.txt
 sudo -u fargisguard cp "$DB_PATH" "$DB_PATH.bak-$(date +%F)"   # DB_PATH as set in /etc/fargisguard/env
 sudo systemctl restart fargisguard
+sudo journalctl -u fargisguard -n 50 --no-pager               # no ConfigError; a `classify tier=` line once traffic flows
 ```
+
+Rollback: `git checkout <previous-tag>`, restore the `.bak` file, restart. The
+`openai` pin is kept for one release so the previous tag still imports without
+a `pip install` step.
 
 Schema changes are applied automatically on first connection
 (`database.MIGRATIONS`); the SQLite file is never dropped. Take the backup

@@ -8,7 +8,7 @@ violations are handled immediately and reversibly, and high-severity ones are
 ## How moderation works
 
 ```
-message ──▶ resolve scope (guild/category/channel/thread) ──▶ classifier (gpt-4o-mini)
+message ──▶ resolve scope ──▶ [batch per ruleset, if /batch set] ──▶ classifier (Claude Haiku 4.5)
                                                     │
                        reply "OK" ◀─────────────────┤──▶ VIOLATION|sev|reason
                        (silent)                     │         │
@@ -30,7 +30,7 @@ message ──▶ resolve scope (guild/category/channel/thread) ──▶ classi
 - **Human gate.** Severity 3–4 places the member on a 60-minute timeout and
   records a pending action; a moderator runs `/modaction <id> approve` or
   `deny`.
-- **Fail closed.** If OpenAI or Discord errors mid-pipeline, the message and the
+- **Fail closed.** If the model API or Discord errors mid-pipeline, the message and the
   error go to `#mod-logs`. No silent pass-through.
 - **Scoped rules with a floor.** Rules can differ per category, channel, and
   thread; a channel Discord marks NSFW is classified against *its* rules like
@@ -53,6 +53,14 @@ message ──▶ resolve scope (guild/category/channel/thread) ──▶ classi
 | `/rules thread <channel> <text>` | Administrator | Rules for replies inside that channel's threads. |
 | `/rules clear category\|channel\|thread <target>` | Administrator | Remove one scope's rules. |
 | `/rules show <channel> [in_thread]` | Administrator | The exact text the classifier enforces there, safety floor included. |
+| `/batch set <seconds>` | Administrator | Review messages in batches every N seconds (1–300; 0 = each message on its own, the default). |
+| `/batch show` | Administrator | Current interval, size cap, and how many messages are waiting. |
+
+**Batching.** With `/batch set`, messages that share a ruleset are sent to the
+classifier together, so the rules and instructions are paid for once per batch
+instead of once per message. The trade-off is explicit: a message — even a
+severe one — stays visible until its batch is checked. Any verdict of severity
+3 or 4 gets a second opinion from a stronger model before the member is held.
 
 Rules are plain sentences ("nudity is fine here, never minors or animal
 harm"; "video posts only — replies are plain text"). Narrower scopes add to
@@ -68,7 +76,7 @@ Requires Python 3.11+.
 ```bash
 python3 -m venv venv && . venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # fill in DISCORD_TOKEN and OPENAI_API_KEY
+cp .env.example .env        # fill in DISCORD_TOKEN and ANTHROPIC_API_KEY
 python bot.py
 ```
 
@@ -86,7 +94,7 @@ Secrets come only from the environment — `.env` locally, a systemd
 | Variable | Required | Default | Meaning |
 |---|---|---|---|
 | `DISCORD_TOKEN` | yes | — | Bot token. Startup fails with a clear error if missing. |
-| `OPENAI_API_KEY` | yes | — | OpenAI key for the classifier. |
+| `ANTHROPIC_API_KEY` | yes | — | Anthropic key for the classifier. (For one release, `OPENAI_API_KEY` alone starts the bot with a warning and every message fails closed.) |
 | `DB_PATH` | no | `moderation.db` | SQLite file (created on first use). |
 | `MOD_LOG_CHANNEL` | no | `mod-logs` | Text channel that receives notices. |
 | `DASHBOARD_TOKEN` | no | *(empty)* | Bearer token for the dashboard. **Empty disables the dashboard.** |
@@ -111,7 +119,7 @@ curl http://127.0.0.1:8000/health          # no token needed
 
 ```bash
 pip install -r requirements-dev.txt
-pytest          # fully offline: Discord, OpenAI, and the DB file are faked/isolated
+pytest          # fully offline: Discord, the model API, and the DB file are faked/isolated
 ruff check .
 ```
 
@@ -127,4 +135,4 @@ the `EnvironmentFile` layout, and the SSH key-rotation runbook.
 
 ## Stack
 
-Python 3.11 · discord.py 2.3 · OpenAI (`gpt-4o-mini`) · FastAPI + uvicorn · SQLite
+Python 3.11 · discord.py 2.3 · Anthropic (`claude-haiku-4-5`, `claude-sonnet-5` re-check) · FastAPI + uvicorn · SQLite

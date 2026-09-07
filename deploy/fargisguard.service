@@ -17,6 +17,9 @@ EnvironmentFile=/etc/fargisguard/env
 ExecStart=/opt/fargisguard/venv/bin/python bot.py
 Restart=on-failure
 RestartSec=5
+# Graceful stop drains queued message batches: 20 s flush budget + one
+# classifier request timeout (batcher.SHUTDOWN_FLUSH_SECONDS + ai_engine.REQUEST_TIMEOUT).
+TimeoutStopSec=40
 
 # Hardening
 NoNewPrivileges=true

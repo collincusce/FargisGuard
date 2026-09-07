@@ -1,7 +1,7 @@
 # token-architecture Gameplan
 
 > Created: 2026-09-07
-> Status: Executing
+> Status: Complete
 <!-- Optional, advisory-only (D-072) — declare to arm the wind-down advisory:
      "> Budget: N sessions" here, and/or "**Budget**: N sessions" inside a
      "### Phase N" block. Dormant by default; nothing blocks, ever. -->
@@ -216,8 +216,8 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 6.1 | _(describe)_ | _(est)_ |
 
 **Exit criteria**:
-- [ ] docs/DEPLOYMENT.md upgrade sequence: announce batching latency to moderators, add ANTHROPIC_API_KEY to the EnvironmentFile BEFORE restart, pip install, DB backup, restart, journalctl checks including the new DEBUG line shape; deploy/fargisguard.service sets TimeoutStopSec explicitly
-- [ ] .env.example, README (commands table, how-it-works diagram, model name), CHANGELOG Unreleased, ARCHITECTURE, and subsystem docs (ai-engine, pipeline, bot-gateway, new batcher) are updated with versions bumped; ext.anthropic-api entity created and ext.openai-api retired; every cascade resolved
-- [ ] A fresh venv installs requirements.txt and passes the full suite; ruff clean
-- [ ] Post-mortem inputs recorded: estimated per-1,000-message cost before/after from D-014 (labelled estimate) and the measured baseline status (O-04)
-- [ ] Full suite green, count recorded
+- [x] docs/DEPLOYMENT.md upgrade sequence: announce batching latency to moderators, add ANTHROPIC_API_KEY to the EnvironmentFile BEFORE restart, pip install, DB backup, restart, journalctl checks including the new DEBUG line shape; deploy/fargisguard.service sets TimeoutStopSec explicitly
+- [x] .env.example, README (commands table, how-it-works diagram, model name), CHANGELOG Unreleased, ARCHITECTURE, and subsystem docs (ai-engine, pipeline, bot-gateway, new batcher) are updated with versions bumped; ext.anthropic-api entity created and ext.openai-api retired; every cascade resolved
+- [x] A fresh venv installs requirements.txt and passes the full suite; ruff clean
+- [x] Post-mortem inputs recorded: estimated per-1,000-message cost before/after from D-014 (labelled estimate) and the measured baseline status (O-04)
+- [x] Full suite green, count recorded

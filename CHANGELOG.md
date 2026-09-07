@@ -3,6 +3,21 @@
 Milestone-level history. Details live in `docs/HARDENING.md` (findings) and
 `docs/gameplans/` (the work).
 
+## Unreleased — Token architecture gameplan
+
+- **Classifier moved to Anthropic** (D-011): `claude-haiku-4-5` classifies,
+  `claude-sonnet-5` gives a second opinion on any severity-3/4 verdict before a
+  member is held. `ANTHROPIC_API_KEY` replaces `OPENAI_API_KEY`; for one release
+  the old key alone starts the bot with a warning and every message fails
+  closed. The `openai` pin stays one release for rollback.
+- **Batching** (D-012): `/batch set <seconds>` (Administrator, 0–300, default
+  0 = off) sends messages that share a ruleset in one request; `/batch show`
+  reports the interval and queue depth. Verdicts come back as structured JSON
+  keyed by message id and fail closed per id (D-013). A stop drains the queue;
+  `deploy/fargisguard.service` gains `TimeoutStopSec=40`.
+- Prompt caching deliberately not used: the prefix is below Haiku 4.5's
+  minimum cacheable size (D-014).
+
 ## Unreleased — Scoped moderation rules gameplan
 
 - Rules can be authored per guild, category, channel, and thread (rules.py);

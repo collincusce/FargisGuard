@@ -13,7 +13,7 @@
 | 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Escalation re-check tier | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-5-HANDOFF.md |
-| 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
+| 6 | Release readiness | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-6-HANDOFF.md |
 
 ## Outputs Registry
 
@@ -57,6 +57,13 @@ batch_settings_api: batchsettings.py: BATCH_MAX_SECONDS=300; clamp_interval(seco
 ```
 test_count_after_phase_5: 321 passed (304 + 17 in tests/test_recheck.py); ruff clean
 recheck_api: ai_engine.RECHECK_MODEL=claude-sonnet-5, RECHECK_AT=3; recheck(rules, content, *, client, ruleset_key) -> Outcome via classify_batch(model=RECHECK_MODEL, tier="recheck", thinking={"type":"disabled"}); build_request(..., thinking=) only adds the key when given. pipeline: Deps.recheck (None disables), RECHECK_AT, reconcile(original, second) pure (lower wins; equal/higher no change; CLEAN -> DISPUTED reason; failure -> "re-check failed" reason), with_recheck never raises; apply_outcome(rules_text=, ruleset_key=) and the batcher passes the bucket's frozen rules; create_bot(rechecker=recheck).
+```
+
+### Phase 6 Outputs
+
+```
+postmortem_inputs: ESTIMATES ONLY (reference pricing example, unconfirmed live — O-02): per 1,000 messages on Haiku 4.5, per-message ≈ $0.275 (250 in / 5 out each) → batched 25/request ≈ $0.095 (300 static + 200 rules + 25×25 in, 10 out per message) = ~65% less from amortisation alone; caching contributes 0 (D-014); Sonnet 5 re-check on ~5% adds ≈ $0.03 → ≈ $0.12 total. Measured baseline: STILL NONE (O-04 carried from the previous gameplan: 0 API requests in 30 days on the live deployment). First real numbers arrive from `journalctl -u fargisguard | grep 'classify tier='` after deploy with LOG_LEVEL=DEBUG.
+test_count_after_phase_6: 321 passed in the working install and in a fresh venv built from requirements.txt + requirements-dev.txt (anthropic 1.4.0 + openai 2.54.0 + fastapi 0.141.1; pip check clean); ruff check and format clean
 ```
 
 ## Corrections Log
