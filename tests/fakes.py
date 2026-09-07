@@ -153,6 +153,7 @@ class FakeMember:
 
 @dataclass
 class FakeMessage:
+    id: int = 9000
     content: str = "hello"
     author: FakeMember = field(default_factory=FakeMember)
     guild: FakeGuild | None = field(default_factory=FakeGuild)

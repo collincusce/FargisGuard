@@ -1,16 +1,19 @@
 ---
 id: subsys.batcher
 type: subsystem
-version: 0.1.0
+version: 0.2.0
 status: active
 depends_on:
   - subsys.rules@^0.4
   - subsys.verdict@^0.2
+  - subsys.database@^0.5
 last_verified: 2026-09-07
 key_files:
   - batcher.py
+  - batchsettings.py
   - snapshots.py
   - tests/test_batcher.py
+  - tests/test_batchsettings.py
 documented_in: docs/ARCHITECTURE.md#batcher
 ---
 
@@ -41,3 +44,13 @@ documented_in: docs/ARCHITECTURE.md#batcher
 
 The queue is in-memory: a hard crash loses it (open item O-01 of the
 token-architecture gameplan).
+
+## Settings (`batchsettings.py`, gameplan D5)
+
+`batch_settings(guild_id PK, interval_seconds)`; `get_batch_interval` returns 0
+for an unknown guild and is read on every enqueue, so `/batch set` takes
+effect on the next message with no restart. `set_batch_interval` clamps to
+`0..BATCH_MAX_SECONDS` (300) and rejects non-integers before any write. The
+`/batch set <seconds>` and `/batch show` replies come from `set_reply` /
+`show_reply`; `show` includes the queue depth and the exposure-window sentence
+from D-012.

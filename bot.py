@@ -13,6 +13,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+import batchsettings
 import config
 import database
 import rulecmds
@@ -209,6 +210,29 @@ def register_commands(bot: commands.Bot) -> None:
 
     bot.tree.add_command(rules_group)
 
+    batch_group = app_commands.Group(
+        name="batch",
+        description="How often queued messages are sent to the moderator AI",
+        default_permissions=discord.Permissions(administrator=True),
+        guild_only=True,
+    )
+
+    @batch_group.command(name="set", description="Review messages in batches every N seconds")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(seconds=f"1–{batchsettings.BATCH_MAX_SECONDS}; 0 reviews each message")
+    async def batch_set(interaction: discord.Interaction, seconds: int) -> None:
+        reply = batchsettings.set_reply(interaction.guild_id, seconds)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    @batch_group.command(name="show", description="Show the batch interval and queue depth")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def batch_show(interaction: discord.Interaction) -> None:
+        depth = bot.batcher.depth(interaction.guild_id)
+        reply = batchsettings.show_reply(interaction.guild_id, depth)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    bot.tree.add_command(batch_group)
+
     @bot.tree.command(name="modaction", description="Approve or deny a pending kick/ban")
     @app_commands.checks.has_permissions(ban_members=True)
     @app_commands.default_permissions(ban_members=True)
@@ -242,7 +266,7 @@ def create_bot(
     analyze=analyze_message,
     classifier=classify_batch,
     punisher=punish,
-    interval_for=None,
+    interval_for=batchsettings.get_batch_interval,
     mod_log_channel: str = config.MOD_LOG_CHANNEL,
     immune_role_ids: frozenset[int] = config.IMMUNE_ROLE_IDS,
     intents: discord.Intents | None = None,
@@ -253,7 +277,7 @@ def create_bot(
         punish=punisher,
         log=mod_log_poster(mod_log_channel),
         immune_role_ids=frozenset(immune_role_ids),
-        **({"interval_for": interval_for} if interval_for is not None else {}),
+        interval_for=interval_for,
     )
     if dashboard_starter is None:
         dashboard_starter = functools.partial(

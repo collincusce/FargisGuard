@@ -185,10 +185,10 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 4.1 | _(describe)_ | _(est)_ |
 
 **Exit criteria**:
-- [ ] batch_settings table created via SCHEMA; get_batch_interval(guild_id) returns 0 for an unknown guild; set_batch_interval clamps to 0..BATCH_MAX_SECONDS and rejects non-integers
-- [ ] /batch set <seconds> and /batch show exist, Administrator-only by default_permissions and a has_permissions check, guild-only; show prints the interval, the size cap, the guild's current queue depth, and the exposure-window sentence from D-012
-- [ ] The batcher reads the guild's interval per enqueue (no restart needed after /batch set)
-- [ ] Full suite green, count recorded
+- [x] batch_settings table created via SCHEMA; get_batch_interval(guild_id) returns 0 for an unknown guild; set_batch_interval clamps to 0..BATCH_MAX_SECONDS and rejects non-integers
+- [x] /batch set <seconds> and /batch show exist, Administrator-only by default_permissions and a has_permissions check, guild-only; show prints the interval, the size cap, the guild's current queue depth, and the exposure-window sentence from D-012
+- [x] The batcher reads the guild's interval per enqueue (no restart needed after /batch set)
+- [x] Full suite green, count recorded
 
 ### Phase 5: Escalation re-check tier
 

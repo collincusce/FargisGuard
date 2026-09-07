@@ -49,6 +49,12 @@ CREATE TABLE IF NOT EXISTS rules_version (
     version  INTEGER NOT NULL DEFAULT 0
 );
 
+-- Per-guild batching (gameplan D5). 0 = classify each message on its own.
+CREATE TABLE IF NOT EXISTS batch_settings (
+    guild_id         INTEGER PRIMARY KEY,
+    interval_seconds INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS schema_migrations (
     name       TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL

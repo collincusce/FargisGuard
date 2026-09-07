@@ -11,7 +11,7 @@
 | 1 | Batch verdict protocol | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Anthropic engine | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
-| 4 | Batch settings and commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
+| 4 | Batch settings and commands | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Escalation re-check tier | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
@@ -43,6 +43,13 @@ test_count_after_phase_2: 262 passed; ruff check clean; ruff format clean except
 ```
 batcher_api: batcher.Batcher(classify, apply, guild_for, log_to, max_messages=25, clock, sleep, spawn): enqueue(snapshot, rules: ResolvedRules, interval) -> 'queued'|'queued-flush' (sync); depth(guild_id=None); flush_now(guild_id=None); shutdown(deadline=20s) -> unreviewed count. Bucket(guild_id, rules, interval, generation, opened_at, snapshots, timer). pipeline.Deps gained batcher, interval_for (default no_batching -> 0), resolve_rules, clock; handle_message returns 'queued'/'queued-flush' on the batch path. pipeline.apply_outcome(snap, outcome, guild, deps, *, held) and delete_by_id. moderation.punish(existing_pending_id=) + record_history_only; database.append_pending_reason. FargisGuard(deps, classifier=classify_batch) builds its Batcher; close() awaits batcher.shutdown before super().close(). create_bot(interval_for=...) for Phase 4.
 test_count_after_phase_3: 284 passed (262 + 22 in tests/test_batcher.py); ruff check clean
+```
+
+### Phase 4 Outputs
+
+```
+test_count_after_phase_4: 304 passed (284 + 20 in tests/test_batchsettings.py); ruff check and format clean
+batch_settings_api: batchsettings.py: BATCH_MAX_SECONDS=300; clamp_interval(seconds) (0 stays 0, else 1..300, ValueError on non-int/bool); get_batch_interval(guild_id) -> 0 default; set_batch_interval(guild_id, seconds) -> stored; set_reply/show_reply(guild_id, depth) with EXPOSURE_NOTE. Table batch_settings(guild_id PK, interval_seconds). /batch set <seconds> and /batch show, Administrator-only, guild-only; create_bot wires interval_for=get_batch_interval (default). Default for every guild is 0 = per-message until a moderator opts in.
 ```
 
 ## Corrections Log

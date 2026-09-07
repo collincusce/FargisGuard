@@ -1,7 +1,7 @@
 # Chat Handoff Index — token-architecture
 
 > Last updated: 2026-09-07
-> Status: Phase 4 ready
+> Status: Phase 5 ready
 
 ## How This Works
 
@@ -33,7 +33,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 1 | Batch verdict protocol | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Anthropic engine | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
-| 4 | Batch settings and commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
+| 4 | Batch settings and commands | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Escalation re-check tier | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
@@ -64,6 +64,10 @@ config.resolve_model_key is pure: ANTHROPIC_API_KEY wins; a legacy OPENAI_API_KE
 The batch queue exists and is wired, but dormant until Phase 4 gives guilds an interval. batcher.py holds per-(guild, ruleset-key) buckets that freeze their ResolvedRules and hold MessageSnapshots; enqueue is synchronous, each bucket runs its own injected-sleep timer, the size cap flushes at once and cancels the timer, and a flush is swap-and-clear so enqueues during an in-flight flush open a new generation — tests prove nothing is lost or classified twice. _run sorts by message id, classifies once, and applies per message with a shared held map; one apply failure is posted and the rest continue; a classifier failure posts one consolidated notice with links and punishes nobody. shutdown(deadline) flushes everything, cancels stragglers, and posts "unreviewed — shutdown" per unfinished bucket; FargisGuard.close() calls it before super().close().
 
 pipeline.Deps gained batcher, interval_for (default 0 = per message, so all 262 prior tests pass unchanged apart from stub signatures), resolve_rules, and clock; handle_message enqueues a snapshot under the frozen rules on a positive interval and returns queued/queued-flush. apply_outcome mirrors the verdict-onward path from a snapshot: author re-resolved by id (gone → history only), delete by partial message tolerating NotFound/Forbidden, and punish(existing_pending_id=) so a member's second held-tier verdict in a batch joins the first pending action (database.append_pending_reason). 22 new tests; suite 284 green, ruff clean. New subsystem batcher 0.1.0; pipeline 0.5.0, moderation 0.4.0, database 0.4.0, bot-gateway 1.2.0.
+
+### Phase 4 — completed 2026-09-07
+
+Moderators can now turn batching on per guild. batchsettings.py stores interval_seconds in a batch_settings row (0 = per-message, the default and the rollback switch), clamps writes to 1..BATCH_MAX_SECONDS (300), rejects non-integers before any write, and reads the value on every enqueue so /batch set takes effect on the next message with no restart — proven by a test that flips the interval between three messages. /batch set <seconds> and /batch show are Administrator-only and guild-only; show reports the interval, the size cap, the guild's live queue depth, and the exposure-window sentence from D-012. create_bot wires interval_for=get_batch_interval by default. A fake gap surfaced: FakeMessage had no id, so snapshot_of raised inside the queueing boundary and the pipeline correctly answered "error" — fixed in the fake. 20 new tests; suite 304 green. database 0.5.0, batcher 0.2.0, bot-gateway 1.3.0.
 
 ## Accumulated Lessons
 
