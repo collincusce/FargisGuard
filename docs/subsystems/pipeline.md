@@ -1,13 +1,13 @@
 ---
 id: subsys.pipeline
 type: subsystem
-version: 0.3.1
+version: 0.4.0
 status: active
 depends_on:
-  - subsys.verdict@^0.1
+  - subsys.verdict@^0.2
   - subsys.channels@^0.2
-  - subsys.ai-engine@^0.3
-last_verified: 2026-09-06
+  - subsys.ai-engine@^0.5
+last_verified: 2026-09-07
 documented_in: docs/ARCHITECTURE.md#pipeline
 key_files:
   - pipeline.py
@@ -24,10 +24,11 @@ Order: `ignored` (bot author or DM) → `skipped` (nothing to analyze, a pure
 check that touches no Discord object) → **fail-closed boundary 1**: NSFW probe
 and `resolve_scope` (`exempt`, or `error` posted as "scope resolution failed")
 → **boundary 2**: `deps.analyze(content, guild_id, scope=ScopeChain)` (`error`)
-→ sentinel / verdict parse (`clean`, `unparseable`) → **boundary 3**:
+→ outcome branch (`clean`, `unparseable`) → **boundary 3**:
 `deps.punish` (`error`) → delete + mod-log notice → the action string.
 
-Analyzer contract: `async (content, guild_id, *, scope: ScopeChain) -> str`.
+Analyzer contract: `async (content, guild_id, *, scope: ScopeChain) -> verdict.Outcome`
+(`Verdict`, `CLEAN`, or `Unparseable(problem)`); the pipeline branches on the type.
 Reading the channel happens inside a `try` on purpose — a thread whose parent
 left the cache raises in discord.py, and INVARIANT-03 says that goes to a
 human rather than up the stack.

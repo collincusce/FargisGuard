@@ -1,6 +1,6 @@
 """The per-message moderation pipeline, with every side effect injected.
 
-``handle_message`` is the one function ``on_message`` calls. Discord, OpenAI,
+``handle_message`` is the one function ``on_message`` calls. Discord, the model,
 and the database reach it only through ``Deps``, so the whole flow is driven
 offline in tests (INVARIANT-04).
 
@@ -14,12 +14,11 @@ from dataclasses import dataclass
 
 import discord
 
-from ai_engine import CLEAN_SENTINEL
 from channels import ScopeChain, resolve_scope
-from verdict import parse_verdict
+from verdict import Clean, Outcome, Unparseable, Verdict
 
-# analyze(content, guild_id, *, scope: ScopeChain) -> raw classifier reply
-Analyzer = Callable[..., Awaitable[str]]
+# analyze(content, guild_id, *, scope: ScopeChain) -> verdict.Outcome
+Analyzer = Callable[..., Awaitable[Outcome]]
 Punisher = Callable[..., Awaitable[str]]
 Logger = Callable[[discord.Guild, str], Awaitable[None]]
 
@@ -68,10 +67,10 @@ def error_notice(message: discord.Message, stage: str, exc: BaseException) -> st
     )
 
 
-def unparseable_notice(message: discord.Message, reply: str) -> str:
+def unparseable_notice(message: discord.Message, problem: str) -> str:
     return (
-        f"❓ **Unparseable classifier reply — needs a human**\n{_where(message)}\n"
-        f"Reply: {reply[:RAW_REPLY_PREVIEW]}\nMessage: {message.jump_url}"
+        f"❓ **No usable classifier verdict — needs a human**\n{_where(message)}\n"
+        f"Problem: {problem[:RAW_REPLY_PREVIEW]}\nMessage: {message.jump_url}"
     )
 
 
@@ -106,17 +105,18 @@ async def handle_message(message: discord.Message, deps: Deps) -> str:
         return "error"
 
     try:
-        reply = await deps.analyze(message.content, message.guild.id, scope=scope)
+        outcome = await deps.analyze(message.content, message.guild.id, scope=scope)
     except Exception as exc:  # noqa: BLE001 — any failure here must fail closed
         await _log_safely(deps, message.guild, error_notice(message, "analysis", exc))
         return "error"
 
-    if reply.strip() == CLEAN_SENTINEL:
+    if isinstance(outcome, Clean):
         return "clean"
-    verdict = parse_verdict(reply)
-    if verdict is None:
-        await _log_safely(deps, message.guild, unparseable_notice(message, reply))
+    if not isinstance(outcome, Verdict):
+        problem = outcome.problem if isinstance(outcome, Unparseable) else repr(outcome)
+        await _log_safely(deps, message.guild, unparseable_notice(message, problem))
         return "unparseable"
+    verdict = outcome
 
     try:
         action = await deps.punish(

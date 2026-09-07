@@ -1,5 +1,6 @@
 discord.py==2.3.2
-openai==2.54.0
+anthropic==1.4.0
+openai==2.54.0  # kept one release for rollback (gameplan D4); drop next release
 python-dotenv==1.0.0
 fastapi==0.141.1
 uvicorn==0.29.0

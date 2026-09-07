@@ -9,7 +9,7 @@
 |-------|------|--------|---------|-----------|---------|
 | 0 | Bootstrap | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Batch verdict protocol | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-1-HANDOFF.md |
-| 2 | Anthropic engine | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
+| 2 | Anthropic engine | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Batch queue | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Escalation re-check tier | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
@@ -31,6 +31,19 @@ batch_protocol_api: verdict.py: VERDICT_SCHEMA (output_config.format json_schema
 test_count_after_phase_1: 251 passed (217 + 34 in tests/test_batch_verdict.py); ruff check clean
 ```
 
+### Phase 2 Outputs
+
+```
+engine_api: ai_engine: MODEL=claude-haiku-4-5, REQUEST_TIMEOUT=30s, build_request(rules, contents, model=) -> kwargs {model, max_tokens=64+40*n, system, messages, output_config.format json_schema}; classify_batch(rules, contents, *, client, model, ruleset_key, tier) -> ParsedBatch (stop_reason != end_turn => all Unparseable; RateLimitError/APIStatusError/APIConnectionError logged + re-raised); analyze_message(...) -> Outcome (batch of one); get_client() raises ConfigError without ANTHROPIC_API_KEY. Pipeline Analyzer contract now returns verdict.Outcome. FakeAnthropic(reply, error, stop_reason, usage) + batch_reply/ok_entry/violation_entry helpers in tests/fakes.py. NO temperature anywhere (C-01: SDK 1.4.0 create() has no such parameter).
+test_count_after_phase_2: 262 passed; ruff check clean; ruff format clean except the pre-existing tests/test_bot_wiring.py nit
+```
+
 ## Corrections Log
 
-_(Every divergence from the gameplan, captured in real time, as C-NN entries.)_
+### C-01 — Phase 2
+
+**Phase**: 2
+**What gameplan said**: D-011: Haiku 4.5 requests carry temperature 0 (Sonnet 5 omits it).
+**What was actually correct**: No request carries temperature. anthropic 1.4.0's typed messages.create signature has no temperature/top_p/top_k parameters (verified by introspection); the only route would be extra_body, which bypasses the SDK's typing for a knob the newer models reject anyway.
+**Why**: Determinism for the classifier was a nice-to-have, not a requirement: structured output fixes the shape, and the verdict parser fails closed on anything malformed regardless of sampling. Omitting the parameter on both tiers keeps one request builder and avoids a per-model branch.
+**Lesson**: Verify a planned request parameter against the installed SDK's signature (inspect.signature) before writing the decision, not after — the reference docs describe the API surface, the SDK pin decides what is expressible.

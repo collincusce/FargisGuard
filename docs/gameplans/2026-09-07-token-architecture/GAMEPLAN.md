@@ -150,12 +150,12 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 2.1 | _(describe)_ | _(est)_ |
 
 **Exit criteria**:
-- [ ] ai_engine uses anthropic.AsyncAnthropic lazily; MODEL is claude-haiku-4-5; the request carries system=SYSTEM_PROMPT, the batch user turn, output_config.format=VERDICT_SCHEMA, temperature 0, no thinking parameter, and a max_tokens sized to the batch
-- [ ] stop_reason other than end_turn marks every id unparseable; the anthropic exception chain is caught most-specific-first and re-raised to the pipeline's fail-closed boundary
-- [ ] One DEBUG line per request logs ruleset key, batch size, input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens
-- [ ] tests/fakes.py has FakeAnthropic (client.messages.create, content blocks with .type/.text, stop_reason, usage with the four token fields); FakeOpenAI is removed and no test imports openai
-- [ ] config.ANTHROPIC_API_KEY is required unless OPENAI_API_KEY is set, in which case startup logs a WARNING naming the rename and classify fails closed; test_config covers both; conftest seeds ANTHROPIC_API_KEY
-- [ ] requirements.txt pins anthropic==1.4.0 and keeps openai==2.54.0; full suite green, count recorded
+- [x] ai_engine uses anthropic.AsyncAnthropic lazily; MODEL is claude-haiku-4-5; the request carries system=SYSTEM_PROMPT, the batch user turn, output_config.format=VERDICT_SCHEMA, temperature 0, no thinking parameter, and a max_tokens sized to the batch
+- [x] stop_reason other than end_turn marks every id unparseable; the anthropic exception chain is caught most-specific-first and re-raised to the pipeline's fail-closed boundary
+- [x] One DEBUG line per request logs ruleset key, batch size, input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens
+- [x] tests/fakes.py has FakeAnthropic (client.messages.create, content blocks with .type/.text, stop_reason, usage with the four token fields); FakeOpenAI is removed and no test imports openai
+- [x] config.ANTHROPIC_API_KEY is required unless OPENAI_API_KEY is set, in which case startup logs a WARNING naming the rename and classify fails closed; test_config covers both; conftest seeds ANTHROPIC_API_KEY
+- [x] requirements.txt pins anthropic==1.4.0 and keeps openai==2.54.0; full suite green, count recorded
 
 ### Phase 3: Batch queue
 
