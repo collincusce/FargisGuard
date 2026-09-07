@@ -167,13 +167,13 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 3.1 | _(describe)_ | _(est)_ |
 
 **Exit criteria**:
-- [ ] batcher.py: Bucket freezes ResolvedRules at creation and holds MessageSnapshot values; Batcher.enqueue returns without awaiting the network; flush fires on interval (injected clock and sleep) or size cap, whichever first; a size-triggered flush cancels the pending timer; enqueues during an in-flight flush land in the next generation (tests prove no loss and no double-processing)
-- [ ] Verdicts apply in ascending message id; a same-member held-tier verdict after the first in one batch appends to the existing pending action instead of creating another (test with three violations from one member)
-- [ ] A transport or classifier failure for a bucket posts ONE consolidated mod-log notice listing every affected message and punishes nobody (INVARIANT-03)
-- [ ] message.delete() tolerates discord.NotFound; a member who left is re-resolved by id and gets history recorded with no live mutation; one failing message does not abort the rest of the batch
-- [ ] FargisGuard.close() flushes all buckets under a deadline and posts an 'unreviewed — shutdown' notice for anything that did not complete, before super().close(); a test drives it with a fake that never completes
-- [ ] Interval 0 keeps the per-message path byte-for-byte: existing pipeline tests pass unchanged apart from the Recorder helper
-- [ ] Full suite green, count recorded
+- [x] batcher.py: Bucket freezes ResolvedRules at creation and holds MessageSnapshot values; Batcher.enqueue returns without awaiting the network; flush fires on interval (injected clock and sleep) or size cap, whichever first; a size-triggered flush cancels the pending timer; enqueues during an in-flight flush land in the next generation (tests prove no loss and no double-processing)
+- [x] Verdicts apply in ascending message id; a same-member held-tier verdict after the first in one batch appends to the existing pending action instead of creating another (test with three violations from one member)
+- [x] A transport or classifier failure for a bucket posts ONE consolidated mod-log notice listing every affected message and punishes nobody (INVARIANT-03)
+- [x] message.delete() tolerates discord.NotFound; a member who left is re-resolved by id and gets history recorded with no live mutation; one failing message does not abort the rest of the batch
+- [x] FargisGuard.close() flushes all buckets under a deadline and posts an 'unreviewed — shutdown' notice for anything that did not complete, before super().close(); a test drives it with a fake that never completes
+- [x] Interval 0 keeps the per-message path byte-for-byte: existing pipeline tests pass unchanged apart from the Recorder helper
+- [x] Full suite green, count recorded
 
 ### Phase 4: Batch settings and commands
 

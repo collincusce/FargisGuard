@@ -1,7 +1,7 @@
 # Chat Handoff Index — token-architecture
 
 > Last updated: 2026-09-07
-> Status: Phase 3 ready
+> Status: Phase 4 ready
 
 ## How This Works
 
@@ -32,7 +32,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 0 | Bootstrap | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Batch verdict protocol | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Anthropic engine | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-2-HANDOFF.md |
-| 3 | Batch queue | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
+| 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Escalation re-check tier | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
@@ -58,6 +58,12 @@ The batch verdict protocol exists as pure code with no provider attached. verdic
 The classifier now runs on Anthropic. ai_engine.py builds one messages.create request per batch — claude-haiku-4-5, the static system turn (instructions rewritten for numbered messages + the floor), the batch user turn, output_config.format = VERDICT_SCHEMA, max_tokens sized to the batch, and no sampling parameters (C-01: the 1.4.0 SDK's create() has no temperature at all, so D-011's "temperature 0" was dropped rather than smuggled through extra_body). classify_batch parses the first text block when stop_reason is end_turn and fails every id closed otherwise; RateLimitError → APIStatusError → APIConnectionError are logged with their class and re-raised into the pipeline's fail-closed boundary. One DEBUG line per request carries tier, ruleset key, batch size, stop reason, and the four usage counters. analyze_message is a batch of one returning an Outcome; the pipeline's Analyzer contract changed accordingly and branches on Clean / Unparseable / Verdict.
 
 config.resolve_model_key is pure: ANTHROPIC_API_KEY wins; a legacy OPENAI_API_KEY alone starts the service with a WARNING and fails closed on first classification; neither key fails fast naming the new one (gameplan D4). requirements.txt pins anthropic==1.4.0 and keeps openai for one release. FakeAnthropic replaced FakeOpenAI; no test imports openai. Suite 262 green; ai-engine 0.5.0, pipeline 0.4.0, ext.anthropic-api created.
+
+### Phase 3 — completed 2026-09-07
+
+The batch queue exists and is wired, but dormant until Phase 4 gives guilds an interval. batcher.py holds per-(guild, ruleset-key) buckets that freeze their ResolvedRules and hold MessageSnapshots; enqueue is synchronous, each bucket runs its own injected-sleep timer, the size cap flushes at once and cancels the timer, and a flush is swap-and-clear so enqueues during an in-flight flush open a new generation — tests prove nothing is lost or classified twice. _run sorts by message id, classifies once, and applies per message with a shared held map; one apply failure is posted and the rest continue; a classifier failure posts one consolidated notice with links and punishes nobody. shutdown(deadline) flushes everything, cancels stragglers, and posts "unreviewed — shutdown" per unfinished bucket; FargisGuard.close() calls it before super().close().
+
+pipeline.Deps gained batcher, interval_for (default 0 = per message, so all 262 prior tests pass unchanged apart from stub signatures), resolve_rules, and clock; handle_message enqueues a snapshot under the frozen rules on a positive interval and returns queued/queued-flush. apply_outcome mirrors the verdict-onward path from a snapshot: author re-resolved by id (gone → history only), delete by partial message tolerating NotFound/Forbidden, and punish(existing_pending_id=) so a member's second held-tier verdict in a batch joins the first pending action (database.append_pending_reason). 22 new tests; suite 284 green, ruff clean. New subsystem batcher 0.1.0; pipeline 0.5.0, moderation 0.4.0, database 0.4.0, bot-gateway 1.2.0.
 
 ## Accumulated Lessons
 

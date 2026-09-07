@@ -204,6 +204,16 @@ def add_pending(guild_id: int, user_id: int, severity: int, action: str, reason:
         return int(cur.lastrowid)
 
 
+def append_pending_reason(pending_id: int, extra: str) -> bool:
+    """Add ``extra`` to a still-pending action's reason (same member, same batch — D3)."""
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE pending_actions SET reason = reason || ? WHERE id=? AND status='pending'",
+            (extra, pending_id),
+        )
+        return cur.rowcount == 1
+
+
 def get_pending(pending_id: int) -> dict | None:
     with connect() as conn:
         row = conn.execute("SELECT * FROM pending_actions WHERE id=?", (pending_id,)).fetchone()

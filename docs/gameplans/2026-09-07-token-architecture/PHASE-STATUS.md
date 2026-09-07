@@ -10,7 +10,7 @@
 | 0 | Bootstrap | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-0-HANDOFF.md |
 | 1 | Batch verdict protocol | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Anthropic engine | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-2-HANDOFF.md |
-| 3 | Batch queue | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
+| 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
 | 5 | Escalation re-check tier | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
@@ -36,6 +36,13 @@ test_count_after_phase_1: 251 passed (217 + 34 in tests/test_batch_verdict.py); 
 ```
 engine_api: ai_engine: MODEL=claude-haiku-4-5, REQUEST_TIMEOUT=30s, build_request(rules, contents, model=) -> kwargs {model, max_tokens=64+40*n, system, messages, output_config.format json_schema}; classify_batch(rules, contents, *, client, model, ruleset_key, tier) -> ParsedBatch (stop_reason != end_turn => all Unparseable; RateLimitError/APIStatusError/APIConnectionError logged + re-raised); analyze_message(...) -> Outcome (batch of one); get_client() raises ConfigError without ANTHROPIC_API_KEY. Pipeline Analyzer contract now returns verdict.Outcome. FakeAnthropic(reply, error, stop_reason, usage) + batch_reply/ok_entry/violation_entry helpers in tests/fakes.py. NO temperature anywhere (C-01: SDK 1.4.0 create() has no such parameter).
 test_count_after_phase_2: 262 passed; ruff check clean; ruff format clean except the pre-existing tests/test_bot_wiring.py nit
+```
+
+### Phase 3 Outputs
+
+```
+batcher_api: batcher.Batcher(classify, apply, guild_for, log_to, max_messages=25, clock, sleep, spawn): enqueue(snapshot, rules: ResolvedRules, interval) -> 'queued'|'queued-flush' (sync); depth(guild_id=None); flush_now(guild_id=None); shutdown(deadline=20s) -> unreviewed count. Bucket(guild_id, rules, interval, generation, opened_at, snapshots, timer). pipeline.Deps gained batcher, interval_for (default no_batching -> 0), resolve_rules, clock; handle_message returns 'queued'/'queued-flush' on the batch path. pipeline.apply_outcome(snap, outcome, guild, deps, *, held) and delete_by_id. moderation.punish(existing_pending_id=) + record_history_only; database.append_pending_reason. FargisGuard(deps, classifier=classify_batch) builds its Batcher; close() awaits batcher.shutdown before super().close(). create_bot(interval_for=...) for Phase 4.
+test_count_after_phase_3: 284 passed (262 + 22 in tests/test_batcher.py); ruff check clean
 ```
 
 ## Corrections Log

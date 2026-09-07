@@ -36,12 +36,29 @@ class FakeCategory:
 
 
 @dataclass
+class FakePartialMessage:
+    channel: "FakeChannel"
+    id: int
+
+    async def delete(self) -> None:
+        if self.id in self.channel.gone:
+            response = SimpleNamespace(status=404, reason="Not Found")
+            raise discord.NotFound(response, "Unknown Message")
+        if self.channel.delete_forbidden:
+            raise forbidden("Missing Permissions")
+        self.channel.deleted.append(self.id)
+
+
+@dataclass
 class FakeChannel:
     name: str = "general"
     nsfw: bool = False
     id: int = 500
     category_id: int | None = None
     sent: list[str] = field(default_factory=list)
+    deleted: list[int] = field(default_factory=list)  # message ids deleted via partial messages
+    gone: set[int] = field(default_factory=set)  # message ids that raise NotFound
+    delete_forbidden: bool = False
 
     @property
     def mention(self) -> str:
@@ -52,6 +69,9 @@ class FakeChannel:
 
     async def send(self, content: str) -> None:
         self.sent.append(content)
+
+    def get_partial_message(self, message_id: int) -> FakePartialMessage:
+        return FakePartialMessage(self, message_id)
 
 
 @dataclass
@@ -90,6 +110,9 @@ class FakeGuild:
         return self.members.get(user_id)
 
     def get_channel(self, channel_id: int):
+        return self.channels.get(channel_id)
+
+    def get_channel_or_thread(self, channel_id: int):
         return self.channels.get(channel_id)
 
     async def ban(self, user, *, reason: str | None = None) -> None:

@@ -1,9 +1,9 @@
 ---
 id: subsys.database
 type: subsystem
-version: 0.3.0
+version: 0.4.0
 status: active
-last_verified: 2026-09-06
+last_verified: 2026-09-07
 documented_in: docs/ARCHITECTURE.md#database
 key_files:
   - database.py
@@ -19,7 +19,8 @@ lazily per path on first open. No module-level connection (H-08).
 
 `warnings`, `rules` (legacy guild text, mirrored for one release — D2),
 `scoped_rules` (guild_id, scope_kind, scope_id, content; PK on all three),
-`rules_version` (per-guild write counter), `appeals`, `pending_actions`, and
+`rules_version` (per-guild write counter), `appeals`, `pending_actions`
+(`append_pending_reason` extends a still-pending row's reason — batch collapse, D3), and
 `schema_migrations` (names of one-shot scripts already applied).
 
 ## Migration layers (`init_db`)

@@ -6,7 +6,7 @@ from database import add_warning, get_appeal, get_warnings, list_pending_appeals
 from tests.fakes import FakeGuild, FakeInteraction, FakeMember
 
 
-async def _analyze(content, guild_id):
+async def _analyze(content, guild_id, **_):
     return "OK"
 
 
