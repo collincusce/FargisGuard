@@ -1,7 +1,7 @@
 # token-architecture Gameplan
 
 > Created: 2026-09-07
-> Status: Planning
+> Status: Executing
 <!-- Optional, advisory-only (D-072) — declare to arm the wind-down advisory:
      "> Budget: N sessions" here, and/or "**Budget**: N sessions" inside a
      "### Phase N" block. Dormant by default; nothing blocks, ever. -->
@@ -119,10 +119,10 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 0.1 | _(describe)_ | _(est)_ |
 
 **Exit criteria**:
-- [ ] Baseline recorded: 217 tests passing on Python 3.11.15, discord.py 2.3.2, openai 2.54.0; anthropic 1.4.0 identified as the target pin
-- [ ] A fresh venv installs requirements.txt with anthropic==1.4.0 added beside openai==2.54.0 and fastapi==0.141.1, and the existing suite passes in it (L-02)
-- [ ] GAMEPLAN.md overview states the batch model (per-(guild,key) buckets, frozen rules text, interval 0 = per-message, hard cap) and the caching deferral (D-014) so later phases do not re-derive them
-- [ ] Plan committed on claude/moderation-bot-optimization-qpmfn2; working tree clean
+- [x] Baseline recorded: 217 tests passing on Python 3.11.15, discord.py 2.3.2, openai 2.54.0; anthropic 1.4.0 identified as the target pin
+- [x] A fresh venv installs requirements.txt with anthropic==1.4.0 added beside openai==2.54.0 and fastapi==0.141.1, and the existing suite passes in it (L-02)
+- [x] GAMEPLAN.md overview states the batch model (per-(guild,key) buckets, frozen rules text, interval 0 = per-message, hard cap) and the caching deferral (D-014) so later phases do not re-derive them
+- [x] Plan committed on claude/moderation-bot-optimization-qpmfn2; working tree clean
 
 ### Phase 1: Batch verdict protocol
 

@@ -1,7 +1,7 @@
 # Chat Handoff Index — token-architecture
 
 > Last updated: 2026-09-07
-> Status: Phase 0 ready
+> Status: Phase 1 of 7 in progress
 
 ## How This Works
 
@@ -29,8 +29,8 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 
 | Phase | Name | Status | Started | Completed | Handoff |
 |-------|------|--------|---------|-----------|---------|
-| 0 | Bootstrap | ⬜ READY | — | — | handoffs/PHASE-0-HANDOFF.md |
-| 1 | Batch verdict protocol | ⬜ NOT STARTED | — | — | handoffs/PHASE-1-HANDOFF.md |
+| 0 | Bootstrap | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-0-HANDOFF.md |
+| 1 | Batch verdict protocol | 🟡 IN PROGRESS | 2026-09-07 | — | handoffs/PHASE-1-HANDOFF.md |
 | 2 | Anthropic engine | ⬜ NOT STARTED | — | — | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Batch queue | ⬜ NOT STARTED | — | — | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ⬜ NOT STARTED | — | — | handoffs/PHASE-4-HANDOFF.md |
@@ -41,7 +41,11 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 
 ## Per-Phase Completion Summaries
 
-_(None yet.)_
+### Phase 0 — completed 2026-09-07
+
+Planned from three lenses (batching failure modes, Anthropic API/caching/cost against the bundled reference, ops/config/testing). The decisive finding: prompt caching cannot fire on Haiku 4.5 — its minimum cacheable prefix is 4096 tokens against our ~350–1100 — so D-014 defers caching and batching carries the whole cost win (~65% by the lens estimate). Recorded D-011 (Anthropic Haiku 4.5 + Sonnet 5 re-check), D-012 (strict batching per (guild, key), interval 0 = per-message, hard cap), D-013 (structured per-id verdicts, supersedes D-001), INVARIANT-06 (provider-neutral offline tests), gameplan decisions D1–D5, and open items O-01..O-04 (durable queue, unconfirmed pricing, no live verification, carried baseline). Six phases laid out with machine-checkable criteria.
+
+Fresh-venv proof: anthropic 1.4.0 installs beside openai 2.54.0 and fastapi 0.141.1 (httpx and httpx2 coexist), pip check clean, 217 passing. Plan committed as 718addd.
 
 ## Accumulated Lessons
 
