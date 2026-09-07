@@ -30,10 +30,41 @@ class FakeRole:
 
 
 @dataclass
+class FakeCategory:
+    id: int = 300
+    name: str = "category"
+
+
+@dataclass
 class FakeChannel:
     name: str = "general"
     nsfw: bool = False
     id: int = 500
+    category_id: int | None = None
+    sent: list[str] = field(default_factory=list)
+
+    @property
+    def mention(self) -> str:
+        return f"<#{self.id}>"
+
+    def is_nsfw(self) -> bool:
+        return self.nsfw
+
+    async def send(self, content: str) -> None:
+        self.sent.append(content)
+
+
+@dataclass
+class FakeThread:
+    """A thread is a different object from its channel in discord.py; keep that true here.
+
+    Real ``Thread.category``/``.parent`` raise when the parent is uncached, so the
+    fake deliberately offers neither — only ``parent_id`` and ``is_nsfw``.
+    """
+
+    id: int = 700
+    parent_id: int = 500
+    nsfw: bool = False
     sent: list[str] = field(default_factory=list)
 
     @property
@@ -51,11 +82,15 @@ class FakeChannel:
 class FakeGuild:
     id: int = 1001
     text_channels: list[FakeChannel] = field(default_factory=list)
+    channels: dict[int, object] = field(default_factory=dict)
     members: dict[int, object] = field(default_factory=dict)
     bans: list[tuple[int, str | None]] = field(default_factory=list)
 
     def get_member(self, user_id: int):
         return self.members.get(user_id)
+
+    def get_channel(self, channel_id: int):
+        return self.channels.get(channel_id)
 
     async def ban(self, user, *, reason: str | None = None) -> None:
         self.bans.append((getattr(user, "id", user), reason))
@@ -98,7 +133,7 @@ class FakeMessage:
     content: str = "hello"
     author: FakeMember = field(default_factory=FakeMember)
     guild: FakeGuild | None = field(default_factory=FakeGuild)
-    channel: FakeChannel = field(default_factory=FakeChannel)
+    channel: FakeChannel | FakeThread = field(default_factory=FakeChannel)
     deleted: bool = False
     delete_forbidden: bool = False
     jump_url: str = "https://discord.com/channels/1001/500/9000"
@@ -112,9 +147,10 @@ class FakeMessage:
 class FakeCompletions:
     """Stands in for client.chat.completions; records every create() call."""
 
-    def __init__(self, reply: str = "OK", error: Exception | None = None):
+    def __init__(self, reply: str = "OK", error: Exception | None = None, usage=None):
         self.reply = reply
         self.error = error
+        self.usage = usage  # e.g. SimpleNamespace(prompt_tokens=..., completion_tokens=...)
         self.calls: list[dict] = []
 
     async def create(self, **kwargs):
@@ -122,12 +158,12 @@ class FakeCompletions:
         if self.error is not None:
             raise self.error
         message = SimpleNamespace(content=self.reply)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=self.usage)
 
 
 class FakeOpenAI:
-    def __init__(self, reply: str = "OK", error: Exception | None = None):
-        self.completions = FakeCompletions(reply, error)
+    def __init__(self, reply: str = "OK", error: Exception | None = None, usage=None):
+        self.completions = FakeCompletions(reply, error, usage)
         self.chat = SimpleNamespace(completions=self.completions)
 
 
@@ -150,3 +186,8 @@ class FakeInteraction:
     @property
     def guild_id(self) -> int:
         return self.guild.id
+
+    @property
+    def permissions(self) -> FakePermissions:
+        """What app_commands.checks.has_permissions reads."""
+        return self.user.guild_permissions

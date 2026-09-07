@@ -25,7 +25,7 @@ sudo install -d -o fargisguard -g fargisguard /opt/fargisguard/data
 sudo install -d -m 0750 -o root -g fargisguard /etc/fargisguard
 sudo cp /opt/fargisguard/.env.example /etc/fargisguard/env
 sudo chmod 0640 /etc/fargisguard/env && sudo chown root:fargisguard /etc/fargisguard/env
-sudoedit /etc/fargisguard/env     # set DISCORD_TOKEN, OPENAI_API_KEY, DB_PATH, DASHBOARD_TOKEN
+sudoedit /etc/fargisguard/env     # set DISCORD_TOKEN, OPENAI_API_KEY, DB_PATH, DASHBOARD_TOKEN (LOG_LEVEL=DEBUG to log per-call token usage)
 
 sudo cp /opt/fargisguard/deploy/fargisguard.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -39,14 +39,25 @@ mysterious API error later.
 
 ## Upgrading
 
+> **Scoped-rules release note.** After this release, channels Discord marks
+> NSFW are classified like every other channel (they were skipped before).
+> Their guild rules apply until a moderator sets channel-scope rules for them;
+> the safety floor in `ai_engine.SAFETY_FLOOR` applies everywhere and cannot be
+> relaxed by any rule text. Tell your moderators before restarting.
+
 ```bash
 cd /opt/fargisguard && sudo -u fargisguard git pull
 sudo -u fargisguard venv/bin/pip install -r requirements.txt
+sudo -u fargisguard cp "$DB_PATH" "$DB_PATH.bak-$(date +%F)"   # DB_PATH as set in /etc/fargisguard/env
 sudo systemctl restart fargisguard
 ```
 
 Schema changes are applied automatically on first connection
-(`database.MIGRATIONS`); the SQLite file is never dropped.
+(`database.MIGRATIONS`); the SQLite file is never dropped. Take the backup
+anyway: `ADD COLUMN` migrations are safe to re-run, but a release that creates
+or copies tables (the scoped-rules release and later) has no transactional
+rollback in SQLite, and a backup file plus `git checkout <previous-tag>` is the
+whole recovery plan.
 
 ## Dashboard access
 

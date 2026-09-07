@@ -15,10 +15,11 @@ from dataclasses import dataclass
 import discord
 
 from ai_engine import CLEAN_SENTINEL
-from channels import is_exempt
+from channels import ScopeChain, resolve_scope
 from verdict import parse_verdict
 
-Analyzer = Callable[[str, int], Awaitable[str]]
+# analyze(content, guild_id, *, scope: ScopeChain) -> raw classifier reply
+Analyzer = Callable[..., Awaitable[str]]
 Punisher = Callable[..., Awaitable[str]]
 Logger = Callable[[discord.Guild, str], Awaitable[None]]
 
@@ -85,19 +86,27 @@ async def _log_safely(deps: Deps, guild: discord.Guild, text: str) -> None:
 async def handle_message(message: discord.Message, deps: Deps) -> str:
     """Run one message through the pipeline and return what happened.
 
-    Return values: ``ignored`` (bot or DM), ``exempt`` (NSFW channel),
-    ``skipped`` (nothing to analyze), ``clean``, ``unparseable`` (posted for a
-    human), ``error`` (posted for a human), or the action ``punish`` returned.
+    Return values: ``ignored`` (bot or DM), ``skipped`` (nothing to analyze),
+    ``clean``, ``unparseable`` (posted for a human), ``error`` (posted for a
+    human), or the action ``punish`` returned. NSFW-flagged channels are not
+    exempt (D-007); their scope rules say what they allow, the floor says what
+    nothing allows.
     """
     if message.author.bot or message.guild is None:
         return "ignored"
-    if is_exempt(message.channel):
-        return "exempt"
     if not should_analyze(message.content):
         return "skipped"
 
+    # Reading the channel is a Discord-object access and can raise (a thread whose
+    # parent left the cache, for one), so it lives inside the fail-closed boundary.
     try:
-        reply = await deps.analyze(message.content, message.guild.id)
+        scope: ScopeChain = resolve_scope(message)
+    except Exception as exc:  # noqa: BLE001 — D-010: never fall back to guild scope silently
+        await _log_safely(deps, message.guild, error_notice(message, "scope resolution", exc))
+        return "error"
+
+    try:
+        reply = await deps.analyze(message.content, message.guild.id, scope=scope)
     except Exception as exc:  # noqa: BLE001 — any failure here must fail closed
         await _log_safely(deps, message.guild, error_notice(message, "analysis", exc))
         return "error"

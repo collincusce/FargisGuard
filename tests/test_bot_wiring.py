@@ -7,7 +7,7 @@ import bot as botmod
 from bot import FargisGuard, create_bot, make_intents
 
 
-async def _analyze(content, guild_id):
+async def _analyze(content, guild_id, **_):
     return "clean"
 
 

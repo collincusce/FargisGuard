@@ -7,7 +7,7 @@ their dependency edges are tracked under `docs/subsystems/` and
 
 ```
 Discord gateway ─▶ bot-gateway (bot.py) ─▶ pipeline (pipeline.py)
-                        │                    ├─ channels.is_exempt
+                        │                    ├─ channels.resolve_scope
                         │                    ├─ ai-engine (ai_engine.py) ─▶ OpenAI
                         │                    │      └─ rules (rules.py) ─▶ database
                         │                    ├─ verdict.parse_verdict
@@ -24,20 +24,31 @@ Discord gateway ─▶ bot-gateway (bot.py) ─▶ pipeline (pipeline.py)
 `commands.Bot`) with narrowed intents and injected `Deps`; `main()` runs it.
 `setup_hook` syncs the slash-command tree and starts the dashboard exactly once.
 `on_message` delegates to `pipeline.handle_message`. Slash commands: `/appeal`,
-`/appeals`, `/appeal_resolve`, `/modaction`, `/setrules` — moderator commands
+`/appeals`, `/appeal_resolve`, `/modaction`, `/setrules`, and the `/rules`
+group (category / channel / thread / clear / show, handlers in `rulecmds.py`) — moderator commands
 carry `app_commands` permission checks *and* default permissions.
 
 ### pipeline
 `pipeline.py`. The per-message flow with every side effect injected through
-`Deps(analyze, punish, log, immune_role_ids)`: skip bots/DMs → skip NSFW
-channels → skip empty content → classify → `OK` is clean → parse verdict →
-punish → delete → log. Analyzer/punisher errors and unparseable replies are
-posted to mod-log and take no action (INVARIANT-03).
+`Deps(analyze, punish, log, immune_role_ids)`: skip bots/DMs → skip empty
+content → resolve scope (inside the fail-closed boundary) → classify → `OK` is
+clean → parse verdict → punish → delete → log. Scope-resolution, analyzer, and
+punisher errors and unparseable replies are posted to mod-log and take no
+action (INVARIANT-03). NSFW-flagged channels are no longer bypassed (D-007).
 
 ### ai-engine
-`ai_engine.py`. Lazy `AsyncOpenAI` (15 s timeout). Static system prompt; the
-guild's rules and the message are `<rules>`/`<message>` data in the user turn
-with closing tags neutralized. Reply is either `OK` or a verdict line.
+`ai_engine.py`. Lazy `AsyncOpenAI` (15 s timeout). Static system prompt made
+of the classifier instructions plus the operator-owned `<floor>` region
+(`SAFETY_FLOOR`, D-008); the message's *composed scoped rules* (from
+`composer.get_resolver().resolve(scope)`) and the message are
+`<rules>`/`<message>` data in the user turn with closing tags neutralized.
+Reply is either `OK` or a verdict line. With `LOG_LEVEL=DEBUG` every call logs
+the ruleset key, prompt-part sizes, and the API-reported token usage.
+
+### rules + composer
+`rules.py` stores fragments per scope with a per-guild version counter;
+`composer.py` renders the applicable fragments widest-first into one block,
+keys it by sha256, and memoises per `ScopeChain` until the version moves.
 
 ### verdict
 `verdict.py`. `parse_verdict(text) -> Verdict | None` — exact

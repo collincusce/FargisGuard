@@ -53,3 +53,12 @@ def test_import_succeeds_with_both_secrets(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     module = _load_fresh_config()
     assert module.DISCORD_TOKEN == "t" and module.OPENAI_API_KEY == "k"
+
+
+def test_log_level_is_validated_and_uppercased():
+    import logging
+
+    import config
+
+    assert config.LOG_LEVEL in logging.getLevelNamesMapping()
+    assert config.LOG_LEVEL == config.LOG_LEVEL.upper()

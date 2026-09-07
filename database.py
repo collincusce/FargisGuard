@@ -4,6 +4,11 @@
 schema is applied lazily the first time a path is opened in this process, so
 callers never need to remember an init step. There is deliberately no
 module-level connection or cursor (H-08).
+
+Three migration layers run in order inside ``init_db``: ``SCHEMA`` (idempotent
+``CREATE TABLE IF NOT EXISTS``), ``MIGRATIONS`` (columns added after a table
+shipped), and ``SCRIPTS`` (one-shot data moves, each recorded by name in
+``schema_migrations`` so it runs exactly once per database file).
 """
 
 import os
@@ -25,6 +30,28 @@ CREATE TABLE IF NOT EXISTS warnings (
 CREATE TABLE IF NOT EXISTS rules (
     guild_id INTEGER PRIMARY KEY,
     content  TEXT NOT NULL
+);
+
+-- Scoped rules (gameplan D-009). scope_id is 0 for the guild scope, otherwise the
+-- Discord snowflake of the category or channel (thread scope is keyed by the
+-- parent channel). The legacy ``rules`` table stays mirrored for one release (D2).
+CREATE TABLE IF NOT EXISTS scoped_rules (
+    guild_id   INTEGER NOT NULL,
+    scope_kind TEXT    NOT NULL,
+    scope_id   INTEGER NOT NULL,
+    content    TEXT    NOT NULL,
+    PRIMARY KEY (guild_id, scope_kind, scope_id)
+);
+
+-- Bumped on every rules write; the composer's memo is invalidated by it.
+CREATE TABLE IF NOT EXISTS rules_version (
+    guild_id INTEGER PRIMARY KEY,
+    version  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    name       TEXT PRIMARY KEY,
+    applied_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS appeals (
@@ -59,6 +86,16 @@ MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("appeals", "resolved_at", "TEXT"),
 )
 
+# One-shot scripts, applied once per file in this order and recorded by name.
+# Each must be safe against a partially-applied predecessor (hence OR IGNORE).
+SCRIPTS: tuple[tuple[str, str], ...] = (
+    (
+        "2026-09-06-backfill-scoped-rules",
+        "INSERT OR IGNORE INTO scoped_rules (guild_id, scope_kind, scope_id, content) "
+        "SELECT guild_id, 'guild', 0, content FROM rules",
+    ),
+)
+
 _initialized: set[str] = set()
 
 
@@ -78,14 +115,28 @@ def _ensure_column(conn: sqlite3.Connection, table: str, column: str, decl: str)
     return True
 
 
+def _apply_script(conn: sqlite3.Connection, name: str, sql: str) -> bool:
+    """Run ``sql`` once per database file, keyed by ``name``. True if it ran now."""
+    done = conn.execute("SELECT 1 FROM schema_migrations WHERE name=?", (name,)).fetchone()
+    if done:
+        return False
+    conn.execute(sql)
+    conn.execute(
+        "INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)", (name, now_iso())
+    )
+    return True
+
+
 def init_db(path: str | None = None) -> None:
-    """Create tables and apply column migrations. Idempotent."""
+    """Create tables and apply column and script migrations. Idempotent."""
     target = path or db_path()
     conn = sqlite3.connect(target)
     try:
         conn.executescript(SCHEMA)
         for table, column, decl in MIGRATIONS:
             _ensure_column(conn, table, column, decl)
+        for name, sql in SCRIPTS:
+            _apply_script(conn, name, sql)
         conn.commit()
     finally:
         conn.close()
