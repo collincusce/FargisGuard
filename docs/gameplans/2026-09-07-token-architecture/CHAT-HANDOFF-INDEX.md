@@ -86,4 +86,4 @@ obsolete items — mark with "(obsolete)" rather than deleting.)_
 
 _(none yet)_
 
-**1.** Verify a planned request parameter against the installed SDK's signature (inspect.signature) before writing the decision, not after — the reference docs describe the API surface, the SDK pin decides what is expressible.
+**1.** Verify a planned request parameter against the installed SDK's signature (inspect.signature) before writing the decision, not after — the reference docs describe the API surface, the SDK pin decides what is expressible. (promoted 2026-09-07: L-08)
