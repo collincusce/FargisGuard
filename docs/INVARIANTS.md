@@ -35,3 +35,18 @@ Privilege checks use Discord permissions or role IDs from config, never role-nam
 **Introduced by**: 2026-09-07-token-architecture planning (D-011)
 
 Tests never contact Discord or any model provider (OpenAI, Anthropic, or a successor); every network boundary is behind a pure, injectable function so the suite runs offline. Generalises INVARIANT-04's provider wording.
+
+### INVARIANT-07 — No raw message content, appeal text, or rules text ever appears in a log record, a metric, or an HTTP response body outside the authenticated moderator UI: observability carries only IDs, content hashes, lengths, counts, durations, and enum states. Jump URLs are the sanctioned way to point a human at a message.
+**Introduced by**: 2026-09-07-operational-truth-observability-durable-queue-moderator-ui
+
+No raw message content, appeal text, or rules text ever appears in a log record, a metric, or an HTTP response body outside the authenticated moderator UI: observability carries only IDs, content hashes, lengths, counts, durations, and enum states. Jump URLs are the sanctioned way to point a human at a message.
+
+### INVARIANT-08 — No path through the moderation pipeline returns without leaving a trace: every early return, skip, and swallowed exception emits a log record naming the reason. Silence is reserved for the case where nothing happened because nothing arrived.
+**Introduced by**: 2026-09-07-operational-truth-observability-durable-queue-moderator-ui
+
+No path through the moderation pipeline returns without leaving a trace: every early return, skip, and swallowed exception emits a log record naming the reason. Silence is reserved for the case where nothing happened because nothing arrived.
+
+### INVARIANT-09 — Every state-mutating moderator action records a resolvable Discord user id for the moderator who took it, whether it originated from a slash command or the web UI. No shared or machine credential may stand in for a human identity in an audit field.
+**Introduced by**: 2026-09-07-operational-truth-observability-durable-queue-moderator-ui
+
+Every state-mutating moderator action records a resolvable Discord user id for the moderator who took it, whether it originated from a slash command or the web UI. No shared or machine credential may stand in for a human identity in an audit field.
