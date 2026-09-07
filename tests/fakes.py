@@ -36,12 +36,29 @@ class FakeCategory:
 
 
 @dataclass
+class FakePartialMessage:
+    channel: "FakeChannel"
+    id: int
+
+    async def delete(self) -> None:
+        if self.id in self.channel.gone:
+            response = SimpleNamespace(status=404, reason="Not Found")
+            raise discord.NotFound(response, "Unknown Message")
+        if self.channel.delete_forbidden:
+            raise forbidden("Missing Permissions")
+        self.channel.deleted.append(self.id)
+
+
+@dataclass
 class FakeChannel:
     name: str = "general"
     nsfw: bool = False
     id: int = 500
     category_id: int | None = None
     sent: list[str] = field(default_factory=list)
+    deleted: list[int] = field(default_factory=list)  # message ids deleted via partial messages
+    gone: set[int] = field(default_factory=set)  # message ids that raise NotFound
+    delete_forbidden: bool = False
 
     @property
     def mention(self) -> str:
@@ -52,6 +69,9 @@ class FakeChannel:
 
     async def send(self, content: str) -> None:
         self.sent.append(content)
+
+    def get_partial_message(self, message_id: int) -> FakePartialMessage:
+        return FakePartialMessage(self, message_id)
 
 
 @dataclass
@@ -92,6 +112,9 @@ class FakeGuild:
     def get_channel(self, channel_id: int):
         return self.channels.get(channel_id)
 
+    def get_channel_or_thread(self, channel_id: int):
+        return self.channels.get(channel_id)
+
     async def ban(self, user, *, reason: str | None = None) -> None:
         self.bans.append((getattr(user, "id", user), reason))
 
@@ -130,6 +153,7 @@ class FakeMember:
 
 @dataclass
 class FakeMessage:
+    id: int = 9000
     content: str = "hello"
     author: FakeMember = field(default_factory=FakeMember)
     guild: FakeGuild | None = field(default_factory=FakeGuild)
@@ -144,27 +168,57 @@ class FakeMessage:
         self.deleted = True
 
 
-class FakeCompletions:
-    """Stands in for client.chat.completions; records every create() call."""
+class FakeMessages:
+    """Stands in for client.messages; records every create() call (INVARIANT-06)."""
 
-    def __init__(self, reply: str = "OK", error: Exception | None = None, usage=None):
-        self.reply = reply
+    def __init__(
+        self,
+        reply: str = "",
+        error: Exception | None = None,
+        stop_reason: str = "end_turn",
+        usage=None,
+    ):
+        self.reply = reply  # the text of the first content block (JSON under structured output)
         self.error = error
-        self.usage = usage  # e.g. SimpleNamespace(prompt_tokens=..., completion_tokens=...)
+        self.stop_reason = stop_reason
+        self.usage = usage  # e.g. SimpleNamespace(input_tokens=..., output_tokens=..., ...)
         self.calls: list[dict] = []
 
     async def create(self, **kwargs):
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
-        message = SimpleNamespace(content=self.reply)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=self.usage)
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="text", text=self.reply)],
+            stop_reason=self.stop_reason,
+            usage=self.usage,
+        )
 
 
-class FakeOpenAI:
-    def __init__(self, reply: str = "OK", error: Exception | None = None, usage=None):
-        self.completions = FakeCompletions(reply, error, usage)
-        self.chat = SimpleNamespace(completions=self.completions)
+class FakeAnthropic:
+    def __init__(
+        self,
+        reply: str = "",
+        error: Exception | None = None,
+        stop_reason: str = "end_turn",
+        usage=None,
+    ):
+        self.messages = FakeMessages(reply, error, stop_reason, usage)
+
+
+def batch_reply(*entries: dict) -> str:
+    """A structured-output reply body for the given verdict entries."""
+    import json
+
+    return json.dumps({"verdicts": list(entries)})
+
+
+def ok_entry(i: int) -> dict:
+    return {"id": i, "result": "OK", "severity": None, "reason": ""}
+
+
+def violation_entry(i: int, severity: int, reason: str) -> dict:
+    return {"id": i, "result": "VIOLATION", "severity": severity, "reason": reason}
 
 
 @dataclass

@@ -15,7 +15,14 @@ from datetime import timedelta
 
 import discord
 
-from database import add_pending, add_warning, get_pending, get_warnings, resolve_pending
+from database import (
+    add_pending,
+    add_warning,
+    append_pending_reason,
+    get_pending,
+    get_warnings,
+    resolve_pending,
+)
 from escalation import effective_severity
 
 TIMEOUT_MINUTES = 15
@@ -37,18 +44,28 @@ def pending_label(pending_id: int, action: str) -> str:
     return f"pending:{pending_id}:{action}"
 
 
+def record_history_only(user_id: int, guild_id: int) -> str:
+    """The author is gone (left before the batch flushed): keep the warning on record."""
+    add_warning(user_id, guild_id)
+    return "absent"
+
+
 async def punish(
     member: discord.Member,
     severity: int,
     reason: str,
     *,
     immune_role_ids: Collection[int] = (),
+    existing_pending_id: int | None = None,
 ) -> str:
     """Act on ``severity`` for ``member`` and return what happened.
 
     Returns ``warn`` / ``timeout`` for immediate actions, ``pending:<id>:<kick|ban>``
     when the action awaits a moderator, ``immune`` for exempt members, and
-    ``none`` for a severity off the ladder (nothing recorded).
+    ``none`` for a severity off the ladder (nothing recorded). With
+    ``existing_pending_id`` (same member, same batch — gameplan D3) a further
+    held-tier verdict is appended to that pending action instead of opening
+    another hold.
     """
     if is_immune(member, immune_role_ids):
         return "immune"
@@ -71,6 +88,10 @@ async def punish(
         return action
 
     # kick / ban: hold and hand to a human
+    if existing_pending_id is not None and append_pending_reason(
+        existing_pending_id, f"; also: {reason}"
+    ):
+        return pending_label(existing_pending_id, action)
     await member.timeout(_until(HOLD_MINUTES), reason=f"Held for moderator review: {reason}")
     pending_id = add_pending(member.guild.id, member.id, severity, action, reason)
     return pending_label(pending_id, action)

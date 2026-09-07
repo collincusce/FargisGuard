@@ -8,7 +8,8 @@ their dependency edges are tracked under `docs/subsystems/` and
 ```
 Discord gateway ─▶ bot-gateway (bot.py) ─▶ pipeline (pipeline.py)
                         │                    ├─ channels.resolve_scope
-                        │                    ├─ ai-engine (ai_engine.py) ─▶ OpenAI
+                        │                    ├─ batcher (batcher.py) ──┐
+                        │                    ├─ ai-engine (ai_engine.py) ─▶ Anthropic
                         │                    │      └─ rules (rules.py) ─▶ database
                         │                    ├─ verdict.parse_verdict
                         │                    └─ moderation (moderation.py) ─▶ database
@@ -37,13 +38,21 @@ punisher errors and unparseable replies are posted to mod-log and take no
 action (INVARIANT-03). NSFW-flagged channels are no longer bypassed (D-007).
 
 ### ai-engine
-`ai_engine.py`. Lazy `AsyncOpenAI` (15 s timeout). Static system prompt made
+`ai_engine.py`. Lazy `AsyncAnthropic` (30 s timeout). Static system prompt made
 of the classifier instructions plus the operator-owned `<floor>` region
 (`SAFETY_FLOOR`, D-008); the message's *composed scoped rules* (from
 `composer.get_resolver().resolve(scope)`) and the message are
 `<rules>`/`<message>` data in the user turn with closing tags neutralized.
 Reply is either `OK` or a verdict line. With `LOG_LEVEL=DEBUG` every call logs
 the ruleset key, prompt-part sizes, and the API-reported token usage.
+
+### batcher
+`batcher.py` + `batchsettings.py` + `snapshots.py`. Messages queue per
+`(guild, ruleset key)` under a frozen rules text and flush as one request on a
+moderator-set interval (`/batch set`, 0 = per message) or at 25 messages;
+verdicts apply in message order, a member's second held-tier verdict joins the
+first pending action, a classifier failure posts one consolidated notice, and
+`close()` drains the queue before shutdown (D-012, gameplan D1–D3, D5).
 
 ### rules + composer
 `rules.py` stores fragments per scope with a per-guild version counter;
@@ -87,7 +96,11 @@ from the environment, lazy schema creation and column migrations. Tables:
 - **Discord API** (`discord.py` 2.3.2) — gateway events, message deletion,
   member timeout/kick/ban, application commands. Requires the *Message
   Content* and *Server Members* privileged intents.
-- **OpenAI API** (`openai` 2.x) — chat completions, `gpt-4o-mini`.
+- **Anthropic API** (`anthropic` 1.4) — Messages API with structured output;
+  `claude-haiku-4-5` classifies batches, `claude-sonnet-5` re-checks severity
+  >= 3 before a hold (D-011). No prompt caching: the prefix is below Haiku
+  4.5's minimum cacheable size (D-014). The `openai` pin stays one release for
+  rollback.
 
 ## Runtime
 

@@ -5,6 +5,15 @@ import pytest
 from channels import ScopeChain
 from pipeline import Deps, describe_action, handle_message, should_analyze
 from tests.fakes import FakeChannel, FakeGuild, FakeMember, FakeMessage, FakeThread
+from verdict import CLEAN, Outcome, Unparseable, parse_verdict
+
+
+def outcome_of(reply: str) -> Outcome:
+    """Let tests keep speaking the old one-line dialect; the pipeline gets Outcomes."""
+    if reply.strip() == "OK":
+        return CLEAN
+    verdict = parse_verdict(reply)
+    return verdict if verdict is not None else Unparseable(reply)
 
 
 @dataclass
@@ -24,7 +33,7 @@ class Recorder:
             self.scopes.append(scope)
             if self.analyze_error is not None:
                 raise self.analyze_error
-            return self.reply
+            return outcome_of(self.reply)
 
         async def punish(member, severity, reason, *, immune_role_ids=()):
             self.punished.append((member.id, severity, reason, frozenset(immune_role_ids)))
@@ -112,7 +121,7 @@ async def test_empty_message_never_reaches_the_analyzer(rec):
 
 
 async def test_analyzer_error_posts_to_mod_log_and_punishes_nobody(rec):
-    rec.analyze_error = TimeoutError("openai timed out")
+    rec.analyze_error = TimeoutError("model provider timed out")
     msg = FakeMessage(content="hello")
     assert await handle_message(msg, rec.deps()) == "error"
     assert rec.punished == [] and msg.deleted is False

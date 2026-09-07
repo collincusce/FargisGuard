@@ -7,7 +7,7 @@ from moderation import HOLD_MINUTES, TIMEOUT_MINUTES, punish, resolve_pending_ac
 from tests.fakes import FakeGuild, FakeMember
 
 
-async def _noop_analyze(content, guild_id):
+async def _noop_analyze(content, guild_id, **_):
     return "OK"
 
 

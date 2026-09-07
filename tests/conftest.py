@@ -8,7 +8,7 @@ test imports it.
 import os
 
 os.environ.setdefault("DISCORD_TOKEN", "test-discord-token")
-os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key")
 
 
 import pytest  # noqa: E402 — after the env placeholders on purpose

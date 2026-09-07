@@ -2,9 +2,10 @@
 
 Every secret comes from the environment (INVARIANT-01). Required variables
 are validated at import so a misconfigured service fails at startup with the
-variable's name instead of failing later inside a Discord or OpenAI call.
+variable's name instead of failing later inside a Discord or model-provider call.
 """
 
+import logging
 import os
 from collections.abc import Mapping
 
@@ -46,10 +47,34 @@ def parse_id_list(raw: str, *, name: str = "value") -> frozenset[int]:
     return frozenset(ids)
 
 
+def resolve_model_key(env: Mapping[str, str] | None = None) -> tuple[str, str | None]:
+    """The Anthropic key, plus a warning when only the legacy OpenAI key is present.
+
+    One-release bridge (gameplan D4): an EnvironmentFile that still carries
+    OPENAI_API_KEY starts the service — so the operator sees the warning in
+    journalctl instead of a crash loop — and classification fails closed until
+    ANTHROPIC_API_KEY is added. With neither key, fail fast naming the new one.
+    """
+    anthropic_key = optional_env("ANTHROPIC_API_KEY", "", env)
+    if anthropic_key:
+        return anthropic_key, None
+    if optional_env("OPENAI_API_KEY", "", env):
+        return "", (
+            "ANTHROPIC_API_KEY is not set but OPENAI_API_KEY is: the classifier moved to "
+            "Anthropic (D-011). Every message will fail closed to mod-log until "
+            "ANTHROPIC_API_KEY is added to the EnvironmentFile and the service restarted."
+        )
+    raise ConfigError(
+        "ANTHROPIC_API_KEY is not set; add it to .env (local) or the service EnvironmentFile (EC2)"
+    )
+
+
 load_dotenv()
 
 DISCORD_TOKEN = require_env("DISCORD_TOKEN")
-OPENAI_API_KEY = require_env("OPENAI_API_KEY")
+ANTHROPIC_API_KEY, _model_key_warning = resolve_model_key()
+if _model_key_warning:
+    logging.getLogger(__name__).warning(_model_key_warning)
 
 MOD_LOG_CHANNEL = optional_env("MOD_LOG_CHANNEL", "mod-logs")
 DASHBOARD_PORT = int(optional_env("DASHBOARD_PORT", "8000"))

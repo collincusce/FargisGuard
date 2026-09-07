@@ -49,6 +49,12 @@ CREATE TABLE IF NOT EXISTS rules_version (
     version  INTEGER NOT NULL DEFAULT 0
 );
 
+-- Per-guild batching (gameplan D5). 0 = classify each message on its own.
+CREATE TABLE IF NOT EXISTS batch_settings (
+    guild_id         INTEGER PRIMARY KEY,
+    interval_seconds INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS schema_migrations (
     name       TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL
@@ -202,6 +208,16 @@ def add_pending(guild_id: int, user_id: int, severity: int, action: str, reason:
             (guild_id, user_id, severity, action, reason, now_iso()),
         )
         return int(cur.lastrowid)
+
+
+def append_pending_reason(pending_id: int, extra: str) -> bool:
+    """Add ``extra`` to a still-pending action's reason (same member, same batch — D3)."""
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE pending_actions SET reason = reason || ? WHERE id=? AND status='pending'",
+            (extra, pending_id),
+        )
+        return cur.rowcount == 1
 
 
 def get_pending(pending_id: int) -> dict | None:

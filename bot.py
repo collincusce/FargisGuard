@@ -4,6 +4,7 @@ Importing this module never connects; ``main()`` does (D5).
 """
 
 import asyncio
+import dataclasses
 import functools
 import logging
 from collections.abc import Callable
@@ -12,14 +13,16 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+import batchsettings
 import config
 import database
 import rulecmds
-from ai_engine import analyze_message
+from ai_engine import analyze_message, classify_batch, recheck
 from appeals import format_pending_appeals, resolve_appeal_action, submit_appeal
+from batcher import SHUTDOWN_FLUSH_SECONDS, Batcher
 from dashboard import start_dashboard
 from moderation import punish, resolve_pending_action
-from pipeline import Deps, handle_message
+from pipeline import Deps, apply_outcome, handle_message
 from rules import CATEGORY, CHANNEL, THREAD, set_rules
 
 
@@ -45,11 +48,20 @@ class FargisGuard(commands.Bot):
         self,
         deps: Deps,
         *,
+        classifier=classify_batch,
         intents: discord.Intents | None = None,
         dashboard_starter: DashboardStarter | None = None,
     ):
         super().__init__(command_prefix=commands.when_mentioned, intents=intents or make_intents())
-        self.deps = deps
+        self.batcher = Batcher(
+            classify=classifier,
+            apply=lambda snap, outcome, guild, **kw: apply_outcome(
+                snap, outcome, guild, self.deps, **kw
+            ),
+            guild_for=self.get_guild,
+            log_to=deps.log,
+        )
+        self.deps = dataclasses.replace(deps, batcher=self.batcher)
         self.dashboard_starter = dashboard_starter
         self.dashboard_task: asyncio.Task | None = None
         register_commands(self)
@@ -65,6 +77,17 @@ class FargisGuard(commands.Bot):
 
     async def on_message(self, message: discord.Message) -> None:
         await handle_message(message, self.deps)
+
+    async def close(self) -> None:
+        """Flush queued batches before the gateway goes away (gameplan D2)."""
+        try:
+            unreviewed = await self.batcher.shutdown(deadline=SHUTDOWN_FLUSH_SECONDS)
+            if unreviewed:
+                logging.getLogger(__name__).warning(
+                    "%d message(s) left unreviewed at shutdown", unreviewed
+                )
+        finally:
+            await super().close()
 
 
 def register_commands(bot: commands.Bot) -> None:
@@ -187,6 +210,29 @@ def register_commands(bot: commands.Bot) -> None:
 
     bot.tree.add_command(rules_group)
 
+    batch_group = app_commands.Group(
+        name="batch",
+        description="How often queued messages are sent to the moderator AI",
+        default_permissions=discord.Permissions(administrator=True),
+        guild_only=True,
+    )
+
+    @batch_group.command(name="set", description="Review messages in batches every N seconds")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(seconds=f"1–{batchsettings.BATCH_MAX_SECONDS}; 0 reviews each message")
+    async def batch_set(interaction: discord.Interaction, seconds: int) -> None:
+        reply = batchsettings.set_reply(interaction.guild_id, seconds)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    @batch_group.command(name="show", description="Show the batch interval and queue depth")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def batch_show(interaction: discord.Interaction) -> None:
+        depth = bot.batcher.depth(interaction.guild_id)
+        reply = batchsettings.show_reply(interaction.guild_id, depth)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    bot.tree.add_command(batch_group)
+
     @bot.tree.command(name="modaction", description="Approve or deny a pending kick/ban")
     @app_commands.checks.has_permissions(ban_members=True)
     @app_commands.default_permissions(ban_members=True)
@@ -218,7 +264,10 @@ def register_commands(bot: commands.Bot) -> None:
 def create_bot(
     *,
     analyze=analyze_message,
+    classifier=classify_batch,
     punisher=punish,
+    interval_for=batchsettings.get_batch_interval,
+    rechecker=recheck,
     mod_log_channel: str = config.MOD_LOG_CHANNEL,
     immune_role_ids: frozenset[int] = config.IMMUNE_ROLE_IDS,
     intents: discord.Intents | None = None,
@@ -229,6 +278,8 @@ def create_bot(
         punish=punisher,
         log=mod_log_poster(mod_log_channel),
         immune_role_ids=frozenset(immune_role_ids),
+        interval_for=interval_for,
+        recheck=rechecker,
     )
     if dashboard_starter is None:
         dashboard_starter = functools.partial(
@@ -237,7 +288,9 @@ def create_bot(
             host=config.DASHBOARD_HOST,
             port=config.DASHBOARD_PORT,
         )
-    return FargisGuard(deps, intents=intents, dashboard_starter=dashboard_starter)
+    return FargisGuard(
+        deps, classifier=classifier, intents=intents, dashboard_starter=dashboard_starter
+    )
 
 
 def main() -> None:

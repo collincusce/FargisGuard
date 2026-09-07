@@ -30,3 +30,8 @@ Tests never contact Discord or OpenAI; every network boundary is behind a pure, 
 **Introduced by**: onboarding audit 2026-09-06
 
 Privilege checks use Discord permissions or role IDs from config, never role-name strings; channel exemptions use the channel's NSFW flag, never its name.
+
+### INVARIANT-06 — Tests never contact Discord or any model provider (OpenAI, Anthropic, or a successor); every network boundary is behind a pure, injectable function so the suite runs offline. Generalises INVARIANT-04's provider wording.
+**Introduced by**: 2026-09-07-token-architecture planning (D-011)
+
+Tests never contact Discord or any model provider (OpenAI, Anthropic, or a successor); every network boundary is behind a pure, injectable function so the suite runs offline. Generalises INVARIANT-04's provider wording.

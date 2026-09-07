@@ -32,3 +32,5 @@
 ### Category: Process
 
 **L-06.** When a measurement criterion names a unit the system does not natively produce, prefer the unit the system reports for free and record the substitution, rather than adding a dependency whose numbers will not survive the next migration. *(from 2026-09-06-scoped-moderation-rules #2, 2026-09-06)*
+
+**L-08.** Before recording a decision that names a request parameter, verify it against the installed SDK's signature (inspect.signature on the pinned version) — the reference docs describe the API surface, the SDK pin decides what is expressible. Here anthropic 1.4.0's messages.create had no temperature parameter at all, so D-011's "temperature 0" had to be corrected (C-01). *(from 2026-09-07-token-architecture #1, 2026-09-07)*
