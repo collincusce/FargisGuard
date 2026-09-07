@@ -17,7 +17,7 @@ import batchsettings
 import config
 import database
 import rulecmds
-from ai_engine import analyze_message, classify_batch
+from ai_engine import analyze_message, classify_batch, recheck
 from appeals import format_pending_appeals, resolve_appeal_action, submit_appeal
 from batcher import SHUTDOWN_FLUSH_SECONDS, Batcher
 from dashboard import start_dashboard
@@ -55,8 +55,8 @@ class FargisGuard(commands.Bot):
         super().__init__(command_prefix=commands.when_mentioned, intents=intents or make_intents())
         self.batcher = Batcher(
             classify=classifier,
-            apply=lambda snap, outcome, guild, *, held: apply_outcome(
-                snap, outcome, guild, self.deps, held=held
+            apply=lambda snap, outcome, guild, **kw: apply_outcome(
+                snap, outcome, guild, self.deps, **kw
             ),
             guild_for=self.get_guild,
             log_to=deps.log,
@@ -267,6 +267,7 @@ def create_bot(
     classifier=classify_batch,
     punisher=punish,
     interval_for=batchsettings.get_batch_interval,
+    rechecker=recheck,
     mod_log_channel: str = config.MOD_LOG_CHANNEL,
     immune_role_ids: frozenset[int] = config.IMMUNE_ROLE_IDS,
     intents: discord.Intents | None = None,
@@ -278,6 +279,7 @@ def create_bot(
         log=mod_log_poster(mod_log_channel),
         immune_role_ids=frozenset(immune_role_ids),
         interval_for=interval_for,
+        recheck=rechecker,
     )
     if dashboard_starter is None:
         dashboard_starter = functools.partial(

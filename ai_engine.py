@@ -25,6 +25,8 @@ from verdict import VERDICT_SCHEMA, Outcome, ParsedBatch, Unparseable, parse_bat
 log = logging.getLogger(__name__)
 
 MODEL = "claude-haiku-4-5"
+RECHECK_MODEL = "claude-sonnet-5"  # second opinion before a hold (D-011)
+RECHECK_AT = 3  # verdict severity at which the re-check runs
 REQUEST_TIMEOUT = 30.0  # seconds; a batch reply is a few hundred tokens at most
 MAX_CONTENT_CHARS = 2000  # Discord's own message ceiling
 END_TURN = "end_turn"
@@ -97,15 +99,25 @@ def max_tokens_for(count: int) -> int:
     return MAX_TOKENS_BASE + MAX_TOKENS_PER_MESSAGE * count
 
 
-def build_request(rules: str, contents: list[str], *, model: str = MODEL) -> dict:
-    """Pure: the exact keyword arguments for one ``messages.create`` call."""
-    return {
+def build_request(
+    rules: str, contents: list[str], *, model: str = MODEL, thinking: dict | None = None
+) -> dict:
+    """Pure: the exact keyword arguments for one ``messages.create`` call.
+
+    ``thinking`` is only ever ``{"type": "disabled"}`` for the Sonnet 5 re-check:
+    the classifier needs a short structured answer, not a reasoning budget that
+    ``max_tokens`` would then have to cover. Haiku 4.5 gets no thinking key.
+    """
+    request = {
         "model": model,
         "max_tokens": max_tokens_for(len(contents)),
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": build_batch_user_turn(rules, contents)}],
         "output_config": {"format": {"type": "json_schema", "schema": VERDICT_SCHEMA}},
     }
+    if thinking is not None:
+        request["thinking"] = thinking
+    return request
 
 
 _client: anthropic.AsyncAnthropic | None = None
@@ -157,6 +169,7 @@ async def classify_batch(
     model: str = MODEL,
     ruleset_key: str = "guild-only",
     tier: str = "batch",
+    thinking: dict | None = None,
 ) -> ParsedBatch:
     """Classify ``contents`` against ``rules`` in one request; one outcome per message.
 
@@ -166,7 +179,7 @@ async def classify_batch(
     every id ``Unparseable`` — never clean (D-013).
     """
     ids = list(range(1, len(contents) + 1))
-    request = build_request(rules, contents, model=model)
+    request = build_request(rules, contents, model=model, thinking=thinking)
     client = client or get_client()
     try:
         response = await client.messages.create(**request)
@@ -229,4 +242,25 @@ async def analyze_message(
         resolved = (resolver or get_resolver()).resolve(scope)
         rules_text, key = resolved.text, resolved.key
     parsed = await classify_batch(rules_text, [content], client=client, ruleset_key=key)
+    return parsed.outcomes[1]
+
+
+async def recheck(
+    rules: str, content: str, *, client=None, ruleset_key: str = "guild-only"
+) -> Outcome:
+    """A second opinion from the stronger model on one message (D-011).
+
+    Sonnet 5 rejects non-default sampling parameters, so none are sent;
+    thinking is disabled so ``max_tokens`` covers only the verdict. The caller
+    decides what a disagreement means (``pipeline.reconcile``).
+    """
+    parsed = await classify_batch(
+        rules,
+        [content],
+        client=client,
+        model=RECHECK_MODEL,
+        ruleset_key=ruleset_key,
+        tier="recheck",
+        thinking={"type": "disabled"},
+    )
     return parsed.outcomes[1]

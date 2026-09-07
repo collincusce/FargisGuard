@@ -1,7 +1,7 @@
 # Chat Handoff Index — token-architecture
 
 > Last updated: 2026-09-07
-> Status: Phase 5 ready
+> Status: Phase 6 ready
 
 ## How This Works
 
@@ -34,7 +34,7 @@ Run `cz_preflight` before any code. If any enabled check fails: STOP, report.
 | 2 | Anthropic engine | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-4-HANDOFF.md |
-| 5 | Escalation re-check tier | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
+| 5 | Escalation re-check tier | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
 **Status legend**: ⬜ NOT STARTED · 🟢 READY · 🟡 IN PROGRESS · ✅ COMPLETE · ⚠️ BLOCKED · 🔴 FAILED
@@ -68,6 +68,10 @@ pipeline.Deps gained batcher, interval_for (default 0 = per message, so all 262 
 ### Phase 4 — completed 2026-09-07
 
 Moderators can now turn batching on per guild. batchsettings.py stores interval_seconds in a batch_settings row (0 = per-message, the default and the rollback switch), clamps writes to 1..BATCH_MAX_SECONDS (300), rejects non-integers before any write, and reads the value on every enqueue so /batch set takes effect on the next message with no restart — proven by a test that flips the interval between three messages. /batch set <seconds> and /batch show are Administrator-only and guild-only; show reports the interval, the size cap, the guild's live queue depth, and the exposure-window sentence from D-012. create_bot wires interval_for=get_batch_interval by default. A fake gap surfaced: FakeMessage had no id, so snapshot_of raised inside the queueing boundary and the pipeline correctly answered "error" — fixed in the fake. 20 new tests; suite 304 green. database 0.5.0, batcher 0.2.0, bot-gateway 1.3.0.
+
+### Phase 5 — completed 2026-09-07
+
+The Sonnet 5 re-check tier is in. ai_engine.recheck sends one message to claude-sonnet-5 through the same classify_batch path — same system turn and schema, batch of one, thinking {"type":"disabled"} so max_tokens covers only the verdict, no sampling parameters — logged as tier=recheck. pipeline.reconcile is pure: a lower second-opinion severity wins with both reasons kept; equal or higher never escalates; a clean second opinion marks the verdict DISPUTED in the reason (severity >= 3 is held for a human regardless, so nothing is silently cleared); a failed or unparseable re-check keeps the original and says why. with_recheck never raises. Both paths run it before punish for severity >= RECHECK_AT (3): the batch path with the bucket's frozen rules text, the per-message path with the scope's resolved rules; Deps.recheck=None disables the tier and create_bot wires ai_engine.recheck by default. 17 new tests; suite 321 green, ruff clean. ai-engine 0.6.0, pipeline 0.6.0, bot-gateway 1.4.0.
 
 ## Accumulated Lessons
 

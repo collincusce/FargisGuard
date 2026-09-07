@@ -1,12 +1,12 @@
 ---
 id: subsys.pipeline
 type: subsystem
-version: 0.5.0
+version: 0.6.0
 status: active
 depends_on:
   - subsys.verdict@^0.2
   - subsys.channels@^0.2
-  - subsys.ai-engine@^0.5
+  - subsys.ai-engine@^0.6
   - subsys.rules@^0.4
   - subsys.moderation@^0.4
 last_verified: 2026-09-07
@@ -15,6 +15,7 @@ key_files:
   - pipeline.py
   - tests/test_pipeline.py
   - tests/test_batcher.py
+  - tests/test_recheck.py
 ---
 
 # Pipeline
@@ -48,3 +49,13 @@ punishes with `existing_pending_id` from the batch's `held` map so a member's
 second held-tier verdict joins the first pending action (gameplan D3), deletes
 by id through a partial message (`NotFound`/`Forbidden` are no-ops), and posts
 the violation notice. One message's failure never aborts the rest.
+
+## Re-check before a hold (D-011)
+
+On both paths, a `Verdict` of severity >= `RECHECK_AT` (3) goes through
+`with_recheck` → `deps.recheck(rules_text, content, ruleset_key=)` →
+`reconcile` before `punish`. The batch path uses the bucket's frozen rules
+text; the per-message path resolves the scope's rules. A re-check never
+escalates, never clears (a clean second opinion is "DISPUTED" in the reason,
+and severity >= 3 is held for a human regardless), and never raises.
+`Deps.recheck=None` disables the tier.

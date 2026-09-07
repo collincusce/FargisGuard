@@ -27,6 +27,9 @@ Punisher = Callable[..., Awaitable[str]]
 Logger = Callable[[discord.Guild, str], Awaitable[None]]
 IntervalLookup = Callable[[int], float]  # guild_id -> batch interval seconds; 0 = per message
 RulesResolverFn = Callable[[ScopeChain], ResolvedRules]
+Rechecker = Callable[..., Awaitable[Outcome]]  # (rules_text, content, *, ruleset_key) -> Outcome
+
+RECHECK_AT = 3  # severity at which a second opinion is sought before a hold (D-011)
 
 RAW_REPLY_PREVIEW = 300
 
@@ -51,6 +54,9 @@ class Deps:
     interval_for: IntervalLookup = no_batching
     resolve_rules: RulesResolverFn = _default_resolve
     clock: Callable[[], float] = time.time
+    # Re-check tier (D-011): a severity >= RECHECK_AT verdict gets a second opinion
+    # from the stronger model before anything is held. None disables it.
+    recheck: Rechecker | None = None
 
 
 def should_analyze(content: str | None) -> bool:
@@ -121,6 +127,48 @@ def snapshot_error_notice(snap: MessageSnapshot, stage: str, exc: BaseException)
     )
 
 
+def reconcile(original: Verdict, second: Outcome | BaseException) -> Verdict:
+    """Pure: fold the re-check into the verdict that will be acted on (D-011).
+
+    A lower second-opinion severity wins; an equal or higher one changes nothing
+    (the re-check never escalates). A clean second opinion does not clear the
+    message — severity >= 3 is held for a human anyway, so both opinions go into
+    the reason for the moderator. A failed or unparseable re-check keeps the
+    original and says so. The original reason is always preserved.
+    """
+    if isinstance(second, Verdict):
+        if second.severity < original.severity:
+            return Verdict(
+                second.severity,
+                f"{second.reason} (re-check lowered from severity {original.severity}: "
+                f"{original.reason})",
+            )
+        return Verdict(original.severity, f"{original.reason} (re-check agreed: {second.reason})")
+    if isinstance(second, Clean):
+        return Verdict(
+            original.severity,
+            f"{original.reason} (DISPUTED — re-check saw no violation; needs a human)",
+        )
+    if isinstance(second, Unparseable):
+        detail = second.problem
+    else:
+        detail = f"{type(second).__name__}: {second}"
+    return Verdict(original.severity, f"{original.reason} (re-check failed: {detail})")
+
+
+async def with_recheck(
+    deps: Deps, verdict: Verdict, rules_text: str | None, content: str, key: str
+) -> Verdict:
+    """Run the re-check when it applies; never raise (INVARIANT-03 keeps the original)."""
+    if deps.recheck is None or verdict.severity < RECHECK_AT or rules_text is None:
+        return verdict
+    try:
+        second = await deps.recheck(rules_text, content, ruleset_key=key)
+    except Exception as exc:  # noqa: BLE001 — a failed second opinion keeps the first
+        return reconcile(verdict, exc)
+    return reconcile(verdict, second)
+
+
 async def _log_safely(deps: Deps, guild: discord.Guild, text: str) -> None:
     """Logging must never turn a handled error into an unhandled one."""
     try:
@@ -176,6 +224,14 @@ async def handle_message(message: discord.Message, deps: Deps) -> str:
         await _log_safely(deps, message.guild, unparseable_notice(message, problem))
         return "unparseable"
     verdict = outcome
+    if deps.recheck is not None and verdict.severity >= RECHECK_AT:
+        try:
+            resolved = deps.resolve_rules(scope)
+            rules_text, key = resolved.text, resolved.key
+        except Exception as exc:  # noqa: BLE001 — cannot re-check without the rules; say so
+            verdict = reconcile(verdict, exc)
+        else:
+            verdict = await with_recheck(deps, verdict, rules_text, message.content, key)
 
     try:
         action = await deps.punish(
@@ -216,6 +272,8 @@ async def apply_outcome(
     deps: Deps,
     *,
     held: dict[int, int] | None = None,
+    rules_text: str | None = None,
+    ruleset_key: str = "batch",
 ) -> str:
     """Act on one message's outcome after its batch came back.
 
@@ -230,6 +288,8 @@ async def apply_outcome(
         problem = outcome.problem if isinstance(outcome, Unparseable) else repr(outcome)
         await _log_safely(deps, guild, snapshot_unparseable_notice(snap, problem))
         return "unparseable"
+
+    outcome = await with_recheck(deps, outcome, rules_text, snap.content, ruleset_key)
 
     member = guild.get_member(snap.author_id)
     if member is None:

@@ -200,11 +200,11 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 5.1 | _(describe)_ | _(est)_ |
 
 **Exit criteria**:
-- [ ] recheck(rules, snapshot, verdict) calls claude-sonnet-5 with NO temperature/top_p/top_k, thinking disabled, the single-message batch form, and the same schema; a test asserts the request kwargs contain no sampling parameter
-- [ ] A verdict of severity >= 3 is re-checked before punish(); a lower re-check severity replaces it, a clean re-check downgrades to 'held for review' with both opinions in the notice (never silently clean), a failed or unparseable re-check keeps the original and logs the failure
-- [ ] Severity 1-2 verdicts never trigger a re-check (test counts calls)
-- [ ] The DEBUG line for the re-check is tagged tier=recheck with its own usage fields
-- [ ] Full suite green, count recorded
+- [x] recheck(rules, snapshot, verdict) calls claude-sonnet-5 with NO temperature/top_p/top_k, thinking disabled, the single-message batch form, and the same schema; a test asserts the request kwargs contain no sampling parameter
+- [x] A verdict of severity >= 3 is re-checked before punish(); a lower re-check severity replaces it, a clean re-check downgrades to 'held for review' with both opinions in the notice (never silently clean), a failed or unparseable re-check keeps the original and logs the failure
+- [x] Severity 1-2 verdicts never trigger a re-check (test counts calls)
+- [x] The DEBUG line for the re-check is tagged tier=recheck with its own usage fields
+- [x] Full suite green, count recorded
 
 ### Phase 6: Release readiness
 

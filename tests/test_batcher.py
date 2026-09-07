@@ -77,7 +77,7 @@ class Harness:
         outcomes = self.outcomes or {i: CLEAN for i in ids}
         return ParsedBatch({i: outcomes.get(i, CLEAN) for i in ids}, ())
 
-    async def apply(self, snapshot, outcome, guild, *, held):
+    async def apply(self, snapshot, outcome, guild, *, held, **_):
         self.applied.append((snapshot.message_id, outcome, dict(held)))
         if isinstance(outcome, Verdict) and outcome.severity >= 3:
             held.setdefault(snapshot.author_id, 100 + len(held))
@@ -179,7 +179,7 @@ async def test_classifier_failure_posts_one_notice_and_applies_nothing():
 async def test_one_failing_apply_does_not_abort_the_rest():
     h = Harness(outcomes={1: Verdict(2, "x"), 2: Verdict(2, "y"), 3: Verdict(2, "z")})
 
-    async def flaky(snapshot, outcome, guild, *, held):
+    async def flaky(snapshot, outcome, guild, *, held, **_):
         if snapshot.message_id == 2:
             raise RuntimeError("discord 5xx")
         h.applied.append((snapshot.message_id, outcome, {}))

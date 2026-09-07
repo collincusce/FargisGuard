@@ -1,11 +1,11 @@
 ---
 id: subsys.bot-gateway
 type: subsystem
-version: 1.3.0
+version: 1.4.0
 status: active
 depends_on:
-  - subsys.pipeline@^0.5
-  - subsys.ai-engine@^0.5
+  - subsys.pipeline@^0.6
+  - subsys.ai-engine@^0.6
   - subsys.moderation@^0.4
   - subsys.rules@^0.4
   - subsys.appeals@^0.3

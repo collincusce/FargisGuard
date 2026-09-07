@@ -33,7 +33,8 @@ SHUTDOWN_FLUSH_SECONDS = 20.0
 LINKS_IN_NOTICE = 15
 
 Classifier = Callable[..., Awaitable[ParsedBatch]]  # (rules_text, contents, *, ruleset_key)
-Applier = Callable[..., Awaitable[str]]  # (snapshot, outcome, guild, *, held) -> action
+# (snapshot, outcome, guild, *, held, rules_text, ruleset_key) -> action
+Applier = Callable[..., Awaitable[str]]
 GuildLookup = Callable[[int], object | None]
 Logger = Callable[[object, str], Awaitable[None]]  # (guild, text)
 BucketKey = tuple[int, str]
@@ -164,9 +165,7 @@ class Batcher:
     async def _run(self, bucket: Bucket) -> None:
         guild = self._guild_for(bucket.guild_id)
         if guild is None:
-            log.warning(
-                "batch for guild %s dropped: guild no longer available", bucket.guild_id
-            )
+            log.warning("batch for guild %s dropped: guild no longer available", bucket.guild_id)
             return
         ordered = sorted(bucket.snapshots, key=lambda s: s.message_id)  # D3: message order
         bucket.snapshots = ordered
@@ -183,7 +182,14 @@ class Batcher:
         for position, snapshot in enumerate(ordered, start=1):
             outcome = parsed.outcomes[position]
             try:
-                await self._apply(snapshot, outcome, guild, held=held)
+                await self._apply(
+                    snapshot,
+                    outcome,
+                    guild,
+                    held=held,
+                    rules_text=bucket.rules.text,
+                    ruleset_key=bucket.rules.key,
+                )
             except Exception as exc:  # noqa: BLE001 — one message's failure never aborts the rest
                 log.exception("apply failed for message %s", snapshot.message_id)
                 await self._log_safely(

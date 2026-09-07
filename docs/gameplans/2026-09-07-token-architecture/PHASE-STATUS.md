@@ -12,7 +12,7 @@
 | 2 | Anthropic engine | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-2-HANDOFF.md |
 | 3 | Batch queue | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-3-HANDOFF.md |
 | 4 | Batch settings and commands | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-4-HANDOFF.md |
-| 5 | Escalation re-check tier | ⬜ NOT STARTED | — | — | handoffs/PHASE-5-HANDOFF.md |
+| 5 | Escalation re-check tier | ✅ COMPLETE | 2026-09-07 | 2026-09-07 | handoffs/PHASE-5-HANDOFF.md |
 | 6 | Release readiness | ⬜ NOT STARTED | — | — | handoffs/PHASE-6-HANDOFF.md |
 
 ## Outputs Registry
@@ -50,6 +50,13 @@ test_count_after_phase_3: 284 passed (262 + 22 in tests/test_batcher.py); ruff c
 ```
 test_count_after_phase_4: 304 passed (284 + 20 in tests/test_batchsettings.py); ruff check and format clean
 batch_settings_api: batchsettings.py: BATCH_MAX_SECONDS=300; clamp_interval(seconds) (0 stays 0, else 1..300, ValueError on non-int/bool); get_batch_interval(guild_id) -> 0 default; set_batch_interval(guild_id, seconds) -> stored; set_reply/show_reply(guild_id, depth) with EXPOSURE_NOTE. Table batch_settings(guild_id PK, interval_seconds). /batch set <seconds> and /batch show, Administrator-only, guild-only; create_bot wires interval_for=get_batch_interval (default). Default for every guild is 0 = per-message until a moderator opts in.
+```
+
+### Phase 5 Outputs
+
+```
+test_count_after_phase_5: 321 passed (304 + 17 in tests/test_recheck.py); ruff clean
+recheck_api: ai_engine.RECHECK_MODEL=claude-sonnet-5, RECHECK_AT=3; recheck(rules, content, *, client, ruleset_key) -> Outcome via classify_batch(model=RECHECK_MODEL, tier="recheck", thinking={"type":"disabled"}); build_request(..., thinking=) only adds the key when given. pipeline: Deps.recheck (None disables), RECHECK_AT, reconcile(original, second) pure (lower wins; equal/higher no change; CLEAN -> DISPUTED reason; failure -> "re-check failed" reason), with_recheck never raises; apply_outcome(rules_text=, ruleset_key=) and the batcher passes the bucket's frozen rules; create_bot(rechecker=recheck).
 ```
 
 ## Corrections Log

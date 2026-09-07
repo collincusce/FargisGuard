@@ -1,7 +1,7 @@
 ---
 id: subsys.ai-engine
 type: subsystem
-version: 0.5.0
+version: 0.6.0
 status: active
 depends_on:
   - subsys.rules@^0.4
@@ -13,6 +13,7 @@ documented_in: docs/ARCHITECTURE.md#ai-engine
 key_files:
   - ai_engine.py
   - tests/test_ai_engine.py
+  - tests/test_recheck.py
 ---
 
 # AI Engine
@@ -52,3 +53,14 @@ rules come from `composer.get_resolver()`; without one, the guild text.
 `get_client()` raises `ConfigError` when `config.ANTHROPIC_API_KEY` is empty —
 the one-release bridge (gameplan D4) lets the service start on a legacy
 `OPENAI_API_KEY` with a warning and fails closed here on first use.
+
+## Re-check tier (D-011)
+
+`recheck(rules, content, *, client, ruleset_key)` asks `claude-sonnet-5` for a
+second opinion on one message: same system turn, same schema, batch of one,
+`thinking: {"type": "disabled"}` so `max_tokens` covers only the verdict, and
+no sampling parameters (Sonnet 5 rejects them). Logged as `tier=recheck`.
+`pipeline.with_recheck` runs it for any verdict of severity >= `RECHECK_AT`
+(3) before punishment, and `pipeline.reconcile` folds the answer in: a lower
+severity wins, equal or higher changes nothing, a clean second opinion marks
+the verdict DISPUTED (still held for a human), a failure keeps the original.
