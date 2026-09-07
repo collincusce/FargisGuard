@@ -134,11 +134,11 @@ _(None yet. Append A-NNN entries here once Phase 0 starts.)_
 | 1.1 | _(describe)_ | _(est)_ |
 
 **Exit criteria**:
-- [ ] A pure build_batch_user_turn(rules, snapshots) renders <rules> then one <message id=N> block per snapshot with neutralized tags and the content ceiling applied per message
-- [ ] VERDICT_SCHEMA is a JSON schema with additionalProperties:false on every object and no numeric/length constraints, usable as output_config.format
-- [ ] parse_batch_verdicts(reply_json, expected_ids) returns a per-id result where each id is exactly one of clean / Verdict / unparseable; tests cover missing id, duplicate id, extra id, invalid severity, empty reason, empty or non-JSON reply (every id unparseable)
-- [ ] verdict.parse_verdict is unchanged and its tests still pass (the escalation re-check keeps using it or the single-message JSON form)
-- [ ] Full suite green, count recorded
+- [x] A pure build_batch_user_turn(rules, snapshots) renders <rules> then one <message id=N> block per snapshot with neutralized tags and the content ceiling applied per message
+- [x] VERDICT_SCHEMA is a JSON schema with additionalProperties:false on every object and no numeric/length constraints, usable as output_config.format
+- [x] parse_batch_verdicts(reply_json, expected_ids) returns a per-id result where each id is exactly one of clean / Verdict / unparseable; tests cover missing id, duplicate id, extra id, invalid severity, empty reason, empty or non-JSON reply (every id unparseable)
+- [x] verdict.parse_verdict is unchanged and its tests still pass (the escalation re-check keeps using it or the single-message JSON form)
+- [x] Full suite green, count recorded
 
 ### Phase 2: Anthropic engine
 

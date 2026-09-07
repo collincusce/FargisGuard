@@ -79,6 +79,20 @@ def build_messages(rules: str, content: str) -> list[dict[str, str]]:
     ]
 
 
+def build_batch_user_turn(rules: str, contents: list[str]) -> str:
+    """Pure: the user turn for a batch — <rules>, then <message id="1..N"> blocks.
+
+    Ids are batch-local positions (1-based), not Discord snowflakes: short ids
+    are easy for the model to echo exactly, and the caller maps them back. The
+    content ceiling applies per message and every block is tag-neutralised.
+    """
+    blocks = "\n".join(
+        f'<message id="{i}">\n{neutralize_tags(content[:MAX_CONTENT_CHARS])}\n</message>'
+        for i, content in enumerate(contents, start=1)
+    )
+    return f"<rules>\n{neutralize_tags(rules.strip())}\n</rules>\n<messages>\n{blocks}\n</messages>"
+
+
 _client: AsyncOpenAI | None = None
 
 
